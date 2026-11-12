@@ -20,6 +20,10 @@ const config: NextConfig = {
     return [
       { source: "/edit", headers: isolation },
       { source: "/edit/:path*", headers: isolation },
+      // the decoder's own worker scripts must be isolated too, or SharedArrayBuffer is missing inside them
+      { source: "/vendor/libraw/:path*", headers: [...isolation, { key: "Cross-Origin-Resource-Policy", value: "same-origin" }] },
+      // bundled worker scripts (the analysis engine) must carry COEP to start inside the isolated /edit page
+      { source: "/_next/static/:path*", headers: [{ key: "Cross-Origin-Embedder-Policy", value: "require-corp" }, { key: "Cross-Origin-Resource-Policy", value: "same-origin" }] },
       {
         source: "/:path*",
         headers: [

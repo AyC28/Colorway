@@ -5,6 +5,8 @@
 import type { PhotoAnalysis } from "@/analysis/photo";
 import type { FamilyResult, GroupSummary } from "@/analysis/group";
 import type { CompareResult } from "@/analysis/compare";
+import type { EditFit } from "@/analysis/editModel";
+import type { ToneStats } from "@/analysis/photo";
 import type { Request, Response } from "@/workers/protocol";
 
 type Pending = { resolve: (r: Response) => void; reject: (e: Error) => void };
@@ -15,6 +17,7 @@ export class AnalysisEngine {
   private busy: number[] = [];
   private pending = new Map<number, Pending>();
   private nextId = 1;
+  private broken: string | null = null;
 
   constructor(size = Math.max(1, Math.min(4, (globalThis.navigator?.hardwareConcurrency ?? 4) - 1))) {
     for (let i = 0; i < size; i++) {
@@ -27,13 +30,19 @@ export class AnalysisEngine {
         if (e.data.ok) p.resolve(e.data);
         else p.reject(new Error(e.data.error));
       };
-      w.onerror = (e) => { for (const p of this.pending.values()) p.reject(new Error(e.message)); this.pending.clear(); };
+      w.onerror = (e) => {
+        // a worker that cannot start fires a bare error event: fail loudly instead of hanging
+        this.broken = e.message || "The analysis worker could not start in this page";
+        for (const p of this.pending.values()) p.reject(new Error(this.broken));
+        this.pending.clear();
+      };
       this.workers.push(w);
       this.busy.push(0);
     }
   }
 
   private send(req: DistributiveOmit<Request, "id">): Promise<Response> {
+    if (this.broken) return Promise.reject(new Error(this.broken));
     const id = this.nextId++;
     const i = this.busy.indexOf(Math.min(...this.busy)); // least-loaded worker
     this.busy[i]++;
@@ -58,6 +67,12 @@ export class AnalysisEngine {
   async compare(photo: PhotoAnalysis, families: FamilyResult, isJpeg = true): Promise<CompareResult> {
     const r = await this.send({ kind: "compare", photo, families, isJpeg });
     if (r.ok && r.kind === "compare") return r.result;
+    throw new Error("Unexpected worker reply");
+  }
+
+  async fitEdit(lin: Float32Array, target: ToneStats): Promise<EditFit> {
+    const r = await this.send({ kind: "fitEdit", lin, target });
+    if (r.ok && r.kind === "fitEdit") return r.fit;
     throw new Error("Unexpected worker reply");
   }
 

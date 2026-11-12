@@ -6,6 +6,7 @@
 import { analyzePhoto } from "@/analysis/photo";
 import { buildFamilies, summarize } from "@/analysis/group";
 import { comparePhoto } from "@/analysis/compare";
+import { fitEdit } from "@/analysis/editModel";
 import { CONFIG } from "@/analysis/config";
 import type { Request, Response } from "./protocol";
 
@@ -37,8 +38,10 @@ self.onmessage = async (e: MessageEvent<Request>) => {
       reply({ id: req.id, ok: true, kind: "analyze", analysis, decodeMs }, [s.all.lab.buffer, s.all.w.buffer, s.top.lab.buffer, s.top.w.buffer, s.bottom.lab.buffer, s.bottom.w.buffer]);
     } else if (req.kind === "group") {
       reply({ id: req.id, ok: true, kind: "group", set: summarize(req.photos), families: buildFamilies(req.photos) });
-    } else {
+    } else if (req.kind === "compare") {
       reply({ id: req.id, ok: true, kind: "compare", result: comparePhoto(req.photo, req.families, req.isJpeg) });
+    } else {
+      reply({ id: req.id, ok: true, kind: "fitEdit", fit: fitEdit(req.lin, req.target) });
     }
   } catch (err) {
     reply({ id: req.id, ok: false, error: err instanceof Error ? err.message : String(err) });

@@ -1,7 +1,36 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "spike-sheet", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "4310", "--bind", "127.0.0.1", "--directory", "spike"], "port": 4310 },
-    { "name": "spike-browser", "runtimeExecutable": "node", "runtimeArgs": ["spike/serve.mjs"], "port": 4311 }
+    {
+      "name": "app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "spike-sheet",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4310",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "spike"
+      ],
+      "port": 4310
+    },
+    {
+      "name": "spike-browser",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "spike/serve.mjs"
+      ],
+      "port": 4311
+    }
   ]
 }

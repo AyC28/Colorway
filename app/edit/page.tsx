@@ -1,17 +1,8 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "@/ui/SiteHeader";
-import { EmptyState } from "@/ui/EmptyState";
+import { EditView } from "@/edit/EditView";
 
-export const metadata: Metadata = { title: "Edit guide" };
+export const metadata: Metadata = { title: "Edit guide", description: "Slider ranges for a RAW or JPEG file, fitted toward your closest colour family." };
 
 export default function EditPage() {
-  return (
-    <>
-      <SiteHeader />
-      <main className="container">
-        <div className="intro"><h1>Edit guide</h1></div>
-        <EmptyState title="Open a RAW or JPEG file" body="Canon CR3 works best, on a desktop. You get slider ranges toward your closest family." />
-      </main>
-    </>
-  );
+  return <EditView />;
 }
