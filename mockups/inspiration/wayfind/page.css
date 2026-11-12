@@ -1,0 +1,110 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Wayfind (deal 3/3, seed colorway-color-style-studio-b3b6·f25ba431·2026-11-12·r0)
+ * nav: bordered top bar, sections as joined cells · signature: the horizon board, every family drawn as its sky palette over its ground palette · states: full (loading, empty, error listed in handoff) · wayfind: platform, paper set to a neutral 50% grey
+ * axes: light/mono/cool · posture: committed · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P5 H4 E4 S5 R4 V5 · weakest: H, the board and the detail both want the eye; the detail sits below on ink plates so the board reads first */
+/* Hallmark · waive 64 · Chivo Mono sets every glyph · mono is the Wayfind material, the board face for family names, hex codes and figures */
+/* Hallmark · waive 49b · the family link is a user-renamable family name · names like Orange sky / blue ground run long, and wrapping beats truncating a family name */
+/* Hallmark · dismissed 23 · amber figures on ink plates are the Wayfind figure rule; the glow score is the one figure on its plate */
+/* Hallmark · dismissed 28a · a static mockup screenshot, the photo grid sits below the board so no photo is the LCP in the product */
+/* Hallmark · answered: cool paper replaced by a neutral mid grey, the classic surround for judging colour; cobalt deepened to hold contrast on it */
+@import url("./tokens.css");
+@import url("./base.css");
+@import url("../data.css");
+
+@font-face { font-family: "Chivo Mono"; src: url("../fonts/chivo-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Chivo Mono"; src: url("../fonts/chivo-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Chivo Mono"; src: url("../fonts/chivo-mono-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+
+body { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+main { display: grid; gap: var(--space-xl); padding-bottom: var(--space-3xl); }
+h1, h2, h3 { font-weight: 800; line-height: 0.98; }
+h3 { font-size: var(--text-sm); font-weight: 500; color: var(--color-plate-muted); margin-bottom: var(--space-sm); }
+
+/* ---------- bar */
+.bar { border-bottom: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); }
+.bar-in { display: flex; align-items: center; gap: var(--space-xl); min-height: 64px; }
+.wordmark { font-weight: 800; font-size: var(--text-lg); color: var(--color-ink); text-decoration: none; }
+.cells { max-width: 100%; overflow-x: auto; }
+.cells ul { display: flex; margin: 0; padding: 0; list-style: none; }
+.cells li + li a { border-left: 0; }
+.cells a { white-space: nowrap; display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--space-md); border: var(--rule-bar) solid var(--color-ink); font-weight: 500; color: var(--color-ink); text-decoration: none; transition: background-color var(--dur-micro) steps(1); }
+.cells a:hover { background: var(--color-paper); }
+.cells a[aria-current="page"] { background: var(--color-ink); color: var(--color-plate-ink); }
+.bar .btn { margin-left: auto; }
+
+.intro { display: grid; gap: var(--space-sm); padding-top: var(--space-xl); }
+.intro h1 { font-size: var(--text-3xl); }
+.lead { color: var(--color-ink-2); max-width: 70ch; }
+
+/* ---------- the horizon board (signature) */
+.board { width: 100%; border-collapse: collapse; }
+.board thead th { padding: 0 var(--space-md) var(--space-xs) 0; border-bottom: var(--rule-bar) solid var(--color-ink); font-weight: 500; text-align: left; white-space: nowrap; }
+.board td, .board tbody th { padding: var(--space-sm) var(--space-md) var(--space-sm) 0; border-bottom: var(--rule-hair) solid var(--color-rule); text-align: left; vertical-align: middle; }
+.board tbody th { width: 22%; }
+.board tbody th a { display: block; font-weight: 800; font-size: var(--text-md); color: var(--color-ink); text-decoration: none; }
+.board tbody th a:hover { text-decoration: underline; text-decoration-color: var(--color-accent); }
+.row-n { color: var(--color-ink-2); font-weight: 400; }
+.board td:nth-child(2) { width: 44%; }
+.big { font-weight: 800; font-size: var(--text-xl); }
+.board tbody tr:hover { background: var(--color-paper-2); }
+.board tr.is-selected { background: var(--color-ink); color: var(--color-plate-ink); }
+.board tr.is-selected th a, .board tr.is-selected .row-n { color: var(--color-plate-ink); }
+.board tr.is-selected .big { color: var(--color-accent-2); }
+.board tr:last-child th a { font-weight: 500; }
+
+.horizon { display: grid; grid-template-rows: 30px 30px; border: var(--rule-bar) solid var(--color-ink); }
+.strip { display: flex; }
+.sw { flex: 1 1 0; min-width: 0; background: var(--sw); }
+.strip-ph { height: 8px; }
+.sw-neutral { box-shadow: inset 0 0 0 1px var(--color-rule); }
+.huechart { display: block; width: 160px; height: 40px; background: var(--color-ink); }
+
+/* ---------- selected family on ink plates */
+.detail { display: grid; gap: var(--space-lg); padding: var(--space-xl); border: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); }
+.detail-head { display: flex; align-items: baseline; gap: var(--space-md); }
+.detail-head h2 { font-size: var(--text-2xl); }
+.det-photos { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
+.det-img { width: 100%; aspect-ratio: 1; object-fit: cover; border: var(--rule-bar) solid var(--color-ink); }
+.plates { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: var(--space-md); }
+.plate { padding: var(--space-md); border: var(--rule-bar) solid var(--color-ink); background: var(--color-ink); color: var(--color-plate-ink); }
+.plate .figure { font-weight: 800; font-size: 4rem; line-height: 1; color: var(--color-accent-2); }
+.pal-list { display: grid; gap: var(--space-2xs); margin: 0; padding: 0; list-style: none; }
+.pal-list li { display: grid; grid-template-columns: 20px auto 1fr; align-items: center; gap: var(--space-xs); }
+.pal-list .num { justify-self: end; color: var(--color-plate-muted); }
+.chip { width: 20px; height: 20px; background: var(--sw); }
+.histo { display: block; width: 100%; height: 84px; }
+.histo-ch { isolation: isolate; } .histo-ch path { mix-blend-mode: screen; }
+.h-r { fill: var(--hist-r); } .h-g { fill: var(--hist-g); } .h-b { fill: var(--hist-b); }
+.histo-grid { stroke: var(--color-ink-rule); fill: none; }
+.wheels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-xs); }
+.wheels figure { display: grid; justify-items: center; gap: var(--space-2xs); margin: 0; }
+.wheels figcaption { display: grid; justify-items: center; font-size: var(--text-xs); color: var(--color-plate-muted); }
+.wheel-face { fill: var(--color-ink-2); }
+.wheel-dot { fill: var(--sw); stroke: var(--color-plate-ink); stroke-width: 1.5; }
+.est { font-weight: 400; color: var(--color-accent-2); }
+.note { color: var(--color-ink-2); font-size: var(--text-xs); }
+
+.hex { display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--space-2xs); border: 0; background: transparent; color: inherit; font: 500 var(--text-sm)/1 var(--font-body); cursor: copy; transition: background-color var(--dur-micro) steps(1); }
+.hex:hover { background: var(--color-ink-2); }
+.hex:active { transform: translateY(1px); }
+.hex[data-state="copied"]::after { content: " copied"; color: var(--color-accent-2); }
+
+/* ---------- controls */
+.btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--space-lg); border: var(--rule-bar) solid currentColor; font: 800 var(--text-sm)/1 var(--font-body); text-decoration: none; cursor: pointer; transition: background-color var(--dur-micro) steps(1); }
+.btn-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
+.btn-primary:hover { background: var(--color-ink); border-color: var(--color-ink); }
+.btn:active { transform: translateY(1px); }
+.btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+a:focus-visible, .hex:focus-visible, .btn:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.plate .hex:focus-visible, .board tr.is-selected a:focus-visible { outline-color: var(--color-accent-2); }
+
+@media (max-width: 75rem) { .plates { grid-template-columns: repeat(2, minmax(0, 1fr)); } .det-photos { grid-template-columns: repeat(4, minmax(0, 1fr)); } .board td:last-child, .board th:last-child { display: none; } }
+@media (max-width: 48rem) {
+  .bar-in { flex-wrap: wrap; padding-block: var(--space-sm); } .cells { width: 100%; } .cells a { padding: 0 var(--space-sm); }
+  .board thead { display: none; } .board tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-xs); padding-block: var(--space-sm); }
+  .board td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; width: auto; } .board tbody th { width: auto; }
+  .plates { grid-template-columns: minmax(0, 1fr); } .detail { padding: var(--space-md); }
+}
+
+.h-row, .panel-top, .sub-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-xs); }

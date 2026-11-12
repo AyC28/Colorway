@@ -1,0 +1,80 @@
+[
+ {
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "wayfind",
+  "axes": "light/mono/cool",
+  "hero": "none",
+  "nav": "joined cells",
+  "footer": "none",
+  "imagery": "user photos",
+  "photos": [],
+  "entry": "mockups/inspiration/wayfind/index.html",
+  "fingerprint": "horizon board",
+  "sections": [
+   "intro",
+   "horizon board",
+   "selected family plates"
+  ],
+  "signature": "horizon board, sky over ground",
+  "waived": [
+   "64",
+   "49b"
+  ],
+  "prompt": "Colorway inspiration results",
+  "date": "2026-11-12",
+  "mode": "build"
+ },
+ {
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "terrazzo",
+  "axes": "light/geometric-sans/warm",
+  "hero": "none",
+  "nav": "top bar links",
+  "footer": "none",
+  "imagery": "user photos",
+  "photos": [],
+  "entry": "mockups/inspiration/terrazzo/index.html",
+  "fingerprint": "specimen sheet",
+  "sections": [
+   "intro facts",
+   "palette drawer",
+   "family spec table",
+   "selected family card",
+   "every photo"
+  ],
+  "signature": "palette drawer specimen cards",
+  "waived": [],
+  "prompt": "Colorway inspiration results",
+  "date": "2026-11-12",
+  "mode": "build"
+ },
+ {
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "darkroom",
+  "axes": "dark/display-condensed/chromatic-amber",
+  "hero": "none",
+  "nav": "top bar tabs + families rail",
+  "footer": "none",
+  "imagery": "user photos",
+  "photos": [],
+  "entry": "mockups/inspiration/darkroom/index.html",
+  "fingerprint": "three-column develop panel",
+  "sections": [
+   "rail",
+   "palette proof",
+   "sky/ground",
+   "contact sheet",
+   "measurement panels"
+  ],
+  "signature": "palette proof band",
+  "waived": [
+   "64"
+  ],
+  "prompt": "Colorway inspiration results",
+  "date": "2026-11-12",
+  "mode": "build"
+ }
+]

@@ -14,3 +14,6 @@ spike/out/
 # Personal/reference photos stay local (originals never leave the device)
 reference/
 spike/browser/dist/
+mockups/inspiration/assets/
+mockups/inspiration/png/
+mockups/**/.hallmark/
