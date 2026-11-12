@@ -1,0 +1,22 @@
+# Never upload local secrets or private photos with a CLI deploy
+.env*
+!.env.example
+reference/
+starter-set/
+public/_debug/
+public/vendor/
+test-results/
+playwright-report/
+spike/out/
+spike/browser/dist/
+mockups/inspiration/assets/
+mockups/inspiration/png/
+mockups/png/
+mockups/screens/img/
+mockups/assets-raw/
+mockups/**/.hallmark/
+.hallmark/
+.next/
+node_modules/
+*.CR3
+*.cr3
