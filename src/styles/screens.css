@@ -245,3 +245,26 @@
 .hex-list { display: flex; flex-wrap: wrap; gap: 0 var(--space-sm); margin: var(--space-2xs) 0 var(--space-md); padding: 0; list-style: none; }
 .hex-list .hex { font-size: var(--text-xs); }
 .wheels figcaption .hex { font-size: var(--text-xs); min-height: 24px; }
+.history { display: grid; gap: var(--space-sm); }
+.hist-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-md); margin: 0; padding: 0; list-style: none; }
+.hist-list li { display: grid; gap: var(--space-2xs); }
+.hist-open { display: grid; gap: var(--space-2xs); padding: 0; border: 0; background: none; color: var(--color-ink); text-align: left; cursor: pointer; }
+.hist-open img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: var(--rule-hair) solid var(--color-rule); }
+.is-current .hist-open img { border: var(--rule-bar) solid var(--color-ink); }
+.hist-open:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.hist-name { font-size: var(--text-sm); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.glyph { position: relative; display: inline-block; width: 120px; height: 14px; vertical-align: middle; background: linear-gradient(90deg, var(--t1), var(--t2), var(--t3)); }
+.glyph-mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--color-ink); }
+.glyph-bar { position: absolute; left: var(--a); width: var(--w); top: 4px; height: 6px; background: var(--color-ink); }
+.glyph-bar.to-r::after, .glyph-bar.to-l::after { content: ""; position: absolute; top: -4px; border: 7px solid transparent; }
+.glyph-bar.to-r::after { right: -12px; border-left-color: var(--color-ink); }
+.glyph-bar.to-l::after { left: -12px; border-right-color: var(--color-ink); }
+.sugg .glyph-cell { white-space: nowrap; }
+.ig-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.in-grid { display: grid; gap: var(--space-sm); }
+.story-stage { position: sticky; }
+.axis-labels { position: absolute; left: 0; top: 7dvh; width: 100%; height: 86dvh; pointer-events: none; z-index: 1; }
+.axis-l { position: absolute; transform: translate(-50%, -50%); padding: 0 var(--space-2xs); background: color-mix(in oklab, var(--color-paper) 80%, transparent); font-size: var(--text-xs); font-weight: 500; color: var(--color-ink-2); white-space: nowrap; }
+.sugg td.move { display: grid; gap: var(--space-xs); justify-items: start; }
+.sugg .glyph-cell { display: block; padding-inline: 14px; }
+.hist-list .link-btn { justify-self: start; }

@@ -48,6 +48,7 @@ export function FamilyView({ id }: { id: string }) {
           <dl className="facts"><div><dt>Photos</dt><dd className="num">{ids.length}</dd></div><div><dt>Brightness</dt><dd className="num">{Math.round(fam.summary.tone.p50 * 100)}</dd></div><div><dt>Glow</dt><dd className="num">{fam.summary.glow.score ?? "none"}</dd></div></dl>
         </div>
 
+        <section aria-labelledby="fp-h"><div className="sec-head"><h2 id="fp-h">The palette</h2><p className="note">Colourful pixels only, largest first.</p></div><PaletteCards p={fam.summary.palette} /></section>
         <section aria-labelledby="fph-h">
           <div className="sec-head"><h2 id="fph-h">Photos in this family</h2><p className="note">Move a photo if it belongs with another family; your choice sticks when the set is regrouped.</p></div>
           <ul className="ph-grid">
@@ -72,7 +73,6 @@ export function FamilyView({ id }: { id: string }) {
           </ul>
         </section>
 
-        <section aria-labelledby="fp-h"><div className="sec-head"><h2 id="fp-h">The palette</h2><p className="note">Colourful pixels only, largest first.</p></div><PaletteCards p={fam.summary.palette} /></section>
         <FullAnalysis s={fam.summary} idBase={`fam-${fam.id}`} />
       </main>
     </>

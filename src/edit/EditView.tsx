@@ -13,9 +13,14 @@ import type { EditFit, ParamRange } from "@/analysis/editModel";
 import type { FamilyMatch } from "@/analysis/compare";
 import { BAND_STEPS } from "@/compare/presentation";
 import { decodeRaw, RAW_EXT, type RawResult } from "./raw";
+import { makeThumb } from "@/library/thumb";
+import { saveInquiry, setEditTarget, useInquiries, inquiryImage } from "@/inquiries/store";
+import { History } from "@/inquiries/History";
+import { MoveGlyph } from "@/compare/MoveGlyph";
+import type { InquiryRow } from "@/db/db";
 import { GradingGuide, HslGuide } from "./ColourGuide";
 
-type Loaded = { name: string; previewUrl: string; analysis: PhotoAnalysis; lin: Float32Array; raw: RawResult | null; clipped: number | null; stops: number | null; matches: FamilyMatch[] };
+type Loaded = { name: string; previewUrl: string; analysis: PhotoAnalysis; lin: Float32Array; raw: NonNullable<InquiryRow["edit"]>["raw"]; clipped: number | null; stops: number | null; matches: FamilyMatch[] };
 
 async function jpegLinear(file: File) {
   const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
@@ -47,9 +52,11 @@ const ev = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFi
 export function EditView() {
   const lib = useLibrary();
   const g = lib.grouping;
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [target, setTarget] = useState<string | null>(null);
-  const [fit, setFit] = useState<EditFit | null>(null);
+  const inq = useInquiries();
+  const rows = inq.rows.filter((r) => r.kind === "edit");
+  const [picked, setPicked] = useState<string | null>(null);
+  const [matches, setMatches] = useState<{ id: string; m: FamilyMatch[] } | null>(null);
+  const [fit, setFit] = useState<{ key: string; fit: EditFit } | null>(null);
   const [state, setState] = useState<"idle" | "decoding" | "fitting" | "error">("idle");
   const [error, setError] = useState("");
   const [mobile, setMobile] = useState(false);
@@ -61,23 +68,42 @@ export function EditView() {
     const t = setTimeout(on, 0);
     return () => { mq.removeEventListener("change", on); clearTimeout(t); };
   }, []);
-  useEffect(() => () => { if (loaded) URL.revokeObjectURL(loaded.previewUrl); }, [loaded]);
 
-  const fam = g && target ? g.families.families.find((f) => f.id === target) ?? null : null;
+  // the file on screen: the one picked, else the latest saved one (a tab switch never loses it)
+  const row = rows.find((r) => r.id === picked) ?? rows[0] ?? null;
+  const loaded: Loaded | null = row && row.edit ? {
+    name: row.name, previewUrl: inquiryImage(row), analysis: row.analysis, lin: row.edit.lin, raw: row.edit.raw, clipped: row.edit.clipped, stops: row.edit.stops,
+    matches: matches && matches.id === row.id ? matches.m : [],
+  } : null;
+  const target = row?.edit?.targetId ?? loaded?.matches[0]?.id ?? null;
   const name = (id: string, fb: string) => g?.names[id] || fb;
+  const fam = g && target ? g.families.families.find((f) => f.id === target) ?? null : null;
 
-  const refit = async (l: Loaded, famId: string) => {
-    const f = g?.families.families.find((x) => x.id === famId);
-    if (!f) return;
-    setState("fitting"); setFit(null);
-    try { setFit(await getEngine().fitEdit(l.lin, f.summary.tone, !!l.raw)); setState("idle"); }
-    catch (e) { setState("error"); setError(e instanceof Error ? e.message : "The edit model failed"); }
-  };
+  // closest families for this file, against the current families
+  useEffect(() => {
+    if (!row || !g) return;
+    let live = true;
+    getEngine().compare(row.analysis, g.families, !row.edit?.raw).then((c) => { if (live) setMatches({ id: row.id, m: c.matches }); }).catch(() => {});
+    return () => { live = false; };
+  }, [row?.id, g]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // slider ranges toward the chosen family
+  const fitKey = row && fam ? `${row.id}:${fam.id}:${g?.updatedAt}` : null;
+  useEffect(() => {
+    if (!row?.edit || !fam || !fitKey) return;
+    let live = true;
+    const t = setTimeout(() => setState((s) => (s === "decoding" ? s : "fitting")), 0);
+    getEngine().fitEdit(row.edit.lin, fam.summary.tone, !!row.edit.raw)
+      .then((f) => { if (live) { setFit({ key: fitKey, fit: f }); setState((s) => (s === "fitting" ? "idle" : s)); } })
+      .catch((e) => { if (live) { setState("error"); setError(e instanceof Error ? e.message : "The edit model failed"); } });
+    return () => { live = false; clearTimeout(t); };
+  }, [fitKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fitNow = fit && fit.key === fitKey ? fit.fit : null;
 
   const open = async (files: File[]) => {
     const file = files[0];
     if (!file || !g) return;
-    setState("decoding"); setError(""); setFit(null);
+    setState("decoding"); setError("");
     try {
       let raw: RawResult | null = null, previewBlob: Blob, lin: Float32Array, clipped: number | null = null, stops: number | null = null;
       if (RAW_EXT.test(file.name)) {
@@ -88,16 +114,15 @@ export function EditView() {
       } else if (/image\/(jpeg|png)/.test(file.type)) {
         previewBlob = file; lin = await jpegLinear(file);
       } else throw new Error("Open a RAW file (Canon CR3 works best) or a JPEG or PNG.");
-      const { analysis } = await getEngine().analyze(previewBlob, 7);
-      const cmp = await getEngine().compare(analysis, g.families, !raw);
-      const l: Loaded = { name: file.name, previewUrl: URL.createObjectURL(previewBlob), analysis, lin, raw, clipped, stops, matches: cmp.matches };
-      setLoaded(l); setTarget(cmp.family.id);
-      await refit(l, cmp.family.id);
+      const [{ analysis }, t] = await Promise.all([getEngine().analyze(previewBlob, 7), makeThumb(previewBlob)]);
+      const meta = raw ? { camera: raw.camera, iso: raw.iso, shutter: raw.shutter, aperture: raw.aperture, craw: raw.craw, asShot: raw.asShot, decodeMs: raw.decodeMs } : null;
+      const id = await saveInquiry({ kind: "edit", name: file.name, image: previewBlob, thumb: t.thumb, analysis, edit: { lin, clipped, stops, raw: meta } });
+      setPicked(id); setState("idle");
     } catch (e) { setState("error"); setError(e instanceof Error ? e.message : "Could not read this file"); }
   };
 
   const busy = state === "decoding" || state === "fitting";
-  const tempBand = fit ? (Math.abs(fit.ranges.temp.best) < 0.2 ? "slight" : Math.abs(fit.ranges.temp.best) < 0.5 ? "moderate" : "strong") : "slight";
+  const tempBand = fitNow ? (Math.abs(fitNow.ranges.temp.best) < 0.2 ? "slight" : Math.abs(fitNow.ranges.temp.best) < 0.5 ? "moderate" : "strong") : "slight";
   const sugg = loaded && fam ? suggest(loaded.analysis, fam) : [];
 
   return (
@@ -128,7 +153,7 @@ export function EditView() {
               <div className="readouts">
                 <div className="ro"><h2 className="ro-h">Histogram</h2><Histogram rgb={loaded.analysis.rgbHist} height={84} /></div>
                 <dl className="ro-list">
-                  {loaded.clipped !== null && <div><dt>Clipped highlights</dt><dd><span className="num">{(loaded.clipped * 100).toFixed(2)}%</span> now{fit && <>, about <span className="num">{Math.round(fit.clippedAfter * 100)}%</span> after the exposure below</>}</dd></div>}
+                  {loaded.clipped !== null && <div><dt>Clipped highlights</dt><dd><span className="num">{(loaded.clipped * 100).toFixed(2)}%</span> now{fitNow && <>, about <span className="num">{Math.round(fitNow.clippedAfter * 100)}%</span> after the exposure below</>}</dd></div>}
                   {loaded.stops !== null && <div><dt>Shadow room</dt><dd>About <span className="num">{loaded.stops.toFixed(1)}</span> stops above the noise floor</dd></div>}
                   {loaded.raw?.asShot && <div><dt>As-shot white balance</dt><dd>Red ×<span className="num">{loaded.raw.asShot.rOverG.toFixed(2)}</span>, blue ×<span className="num">{loaded.raw.asShot.bOverG.toFixed(2)}</span> (camera multipliers)</dd></div>}
                   {loaded.raw && <div><dt>Format</dt><dd>{loaded.raw.craw ? "Compressed C-RAW" : "RAW"}, decoded on this device in <span className="num">{(loaded.raw.decodeMs / 1000).toFixed(1)}</span>&nbsp;s</dd></div>}
@@ -138,21 +163,22 @@ export function EditView() {
             <section className="card ed-card" aria-labelledby="sl-h">
               <div className="h-row"><h2 id="sl-h" className="card-h">Slider ranges</h2><Estimated /></div>
               <label className="move-to target">Toward
-                <select value={target ?? ""} onChange={(e) => { setTarget(e.target.value); void refit(loaded, e.target.value); }} disabled={busy}>
+                <select value={target ?? ""} onChange={(e) => { if (row) void setEditTarget(row.id, e.target.value); }} disabled={busy || !loaded.matches.length}>
                   {loaded.matches.map((m, i) => <option key={m.id} value={m.id}>{name(m.id, m.name)}{i === 0 ? " (closest)" : ""}</option>)}
                 </select>
               </label>
               <p className="note">Fitted with our own simple edit model, so these are starting ranges, not Lightroom’s exact numbers.</p>
-              {!fit ? <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-row" /></div> : (<>
+              {!fitNow ? <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-row" /></div> : (<>
                 <ul className="sliders">
-                  <Slider label="Exposure" r={fit.ranges.exposure} min={-2} max={2} unit=" EV" fmt={ev} />
-                  <Slider label="Contrast" r={fit.ranges.contrast} min={-100} max={100} fmt={signed} />
-                  <Slider label="Highlights" r={fit.ranges.highlights} min={-100} max={100} fmt={signed} />
-                  <Slider label="Shadows" r={fit.ranges.shadows} min={-100} max={100} fmt={signed} />
-                  <li className="slider"><span className="s-name">Temp</span><span className="s-dir">{fit.ranges.temp.best > 0 ? "Warmer" : fit.ranges.temp.best < 0 ? "Cooler" : "Leave"}</span>
-                    {fit.ranges.temp.best !== 0 && <span className="s-val"><span className="meter" role="img" aria-label={tempBand}>{[1, 2, 3].map((i) => <span key={i} className={i <= BAND_STEPS[tempBand] ? "on" : undefined} />)}</span><span className="band">{tempBand}</span></span>}</li>
+                  <Slider label="Exposure" r={fitNow.ranges.exposure} min={-2} max={2} unit=" EV" fmt={ev} />
+                  <Slider label="Contrast" r={fitNow.ranges.contrast} min={-100} max={100} fmt={signed} />
+                  <Slider label="Highlights" r={fitNow.ranges.highlights} min={-100} max={100} fmt={signed} />
+                  <Slider label="Shadows" r={fitNow.ranges.shadows} min={-100} max={100} fmt={signed} />
+                  <li className="slider"><span className="s-name">Temp</span><span className="s-dir">{fitNow.ranges.temp.best > 0 ? "Warmer" : fitNow.ranges.temp.best < 0 ? "Cooler" : "Leave"}</span>
+                    {fitNow.ranges.temp.best !== 0 && <MoveGlyph s={{ group: "Color", control: "Temp", sign: fitNow.ranges.temp.best > 0 ? "+" : "−", band: tempBand, why: "", delta: 0 }} />}
+                    {fitNow.ranges.temp.best !== 0 && <span className="s-val"><span className="meter" role="img" aria-label={tempBand}>{[1, 2, 3].map((i) => <span key={i} className={i <= BAND_STEPS[tempBand] ? "on" : undefined} />)}</span><span className="band">{tempBand}</span></span>}</li>
                 </ul>
-                {fit.clippedAfter > 0.005 && <p className="risk"><b>Clipping risk.</b> The suggested exposure pushes about {Math.round(fit.clippedAfter * 100)}% of pixels to pure white. Pull Highlights down first if the sky matters.</p>}
+                {fitNow.clippedAfter > 0.005 && <p className="risk"><b>Clipping risk.</b> The suggested exposure pushes about {Math.round(fitNow.clippedAfter * 100)}% of pixels to pure white. Pull Highlights down first if the sky matters.</p>}
                 {sugg.length === 0 && <p className="note">This file already sits close to the family.</p>}
               </>)}
             </section>
@@ -168,6 +194,7 @@ export function EditView() {
             </div>
           </section>
         )}
+        <History rows={rows} current={row?.id ?? null} onOpen={setPicked} label="Previous files" />
       </main>
     </>
   );

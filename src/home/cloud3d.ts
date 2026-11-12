@@ -9,6 +9,11 @@ import { linearToOklab, SRGB_TO_LINEAR } from "@/analysis/color";
 
 export interface CloudData { w: number; h: number; rgb: Uint8Array; group: Uint8Array; palette: { hex: string }[] }
 export interface CloudView { setProgress(p: number): void; resize(): void; dispose(): void }
+/** Where each axis end lands on screen (CSS px within the canvas), for HTML labels. */
+export interface AxisLabel { id: "light" | "dark" | "red" | "green" | "yellow" | "blue"; x: number; y: number }
+const AXIS_ENDS: [AxisLabel["id"], number, number, number][] = [
+  ["light", 0, 1.5, 0], ["dark", 0, -1.5, 0], ["red", 1.45, 0, 0], ["green", -1.45, 0, 0], ["yellow", 0, 0, 1.45], ["blue", 0, 0, -1.45],
+];
 
 const VERT = /* glsl */ `
   attribute vec3 aLab; attribute vec3 aColor; attribute vec3 aGroup; attribute float aDelay;
@@ -34,7 +39,7 @@ const FRAG = /* glsl */ `
 const hexToRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-export function createCloud(canvas: HTMLCanvasElement, d: CloudData): CloudView {
+export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (labels: AxisLabel[], visible: number) => void): CloudView {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
   const scene = new THREE.Scene();
@@ -68,8 +73,15 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData): CloudView 
   rig.add(points);
   // the lightness axis, so the vertical direction reads as "light to dark"
   const axisMat = new THREE.LineBasicMaterial({ color: 0x6b6b6b, transparent: true, opacity: 0 });
-  const axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -1.4, 0), new THREE.Vector3(0, 1.4, 0)]), axisMat);
+  // three axes: lightness (vertical), green–red (OKLab a) and blue–yellow (OKLab b)
+  const axisGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, -1.4, 0), new THREE.Vector3(0, 1.4, 0),
+    new THREE.Vector3(-1.35, 0, 0), new THREE.Vector3(1.35, 0, 0),
+    new THREE.Vector3(0, 0, -1.35), new THREE.Vector3(0, 0, 1.35),
+  ]);
+  const axis = new THREE.LineSegments(axisGeo, axisMat);
   rig.add(axis);
+  const v = new THREE.Vector3();
   scene.add(rig);
 
   let progress = 0, dragYaw = 0, dragPitch = 0, frame = 0;
@@ -82,6 +94,11 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData): CloudView 
     rig.rotation.y = morph * 0.75 + dragYaw;
     rig.rotation.x = morph * 0.3 + dragPitch;
     renderer.render(scene, camera);
+    if (onAxes) {
+      rig.updateMatrixWorld();
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      onAxes(AXIS_ENDS.map(([id, x, y, z]) => { v.set(x, y, z).applyMatrix4(rig.matrixWorld).project(camera); return { id, x: ((v.x + 1) / 2) * w, y: ((1 - v.y) / 2) * h }; }), morph);
+    }
   };
   const request = () => { if (!frame) frame = requestAnimationFrame(draw); };
 
@@ -121,7 +138,7 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData): CloudView 
       canvas.removeEventListener("pointerdown", down); canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up); canvas.removeEventListener("pointercancel", up); canvas.removeEventListener("keydown", key);
       ro.disconnect();
-      geo.dispose(); mat.dispose(); axisMat.dispose(); renderer.dispose();
+      geo.dispose(); mat.dispose(); axisMat.dispose(); axisGeo.dispose(); renderer.dispose();
     },
   };
 }

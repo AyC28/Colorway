@@ -3,7 +3,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { liveQuery } from "dexie";
 import { SiteHeader } from "@/ui/SiteHeader";
-import { useLibrary, useThumbUrls } from "@/library/hooks";
+import { useLibrary } from "@/library/hooks";
+import { useInquiries, inquiryThumb, inquiryImage, setInGrid } from "@/inquiries/store";
+import { matchFamilies } from "@/analysis/compare";
+import type { PhotoAnalysis } from "@/analysis/photo";
 import { db, type GridRow } from "@/db/db";
 import { biggestJumps, byFamily, moveTo, smoothFlow } from "./order";
 
@@ -14,7 +17,12 @@ const MODES: [GridRow["mode"], string][] = [["added", "As added"], ["family", "B
 
 export function GridView() {
   const lib = useLibrary();
-  const thumb = useThumbUrls(lib.photos);
+  const inq = useInquiries();
+  // the grid previews YOUR photos: the ones opened in Compare and the Edit guide
+  const all = [...inq.rows].sort((a, b) => b.createdAt - a.createdAt);
+  const byId = new Map(all.map((r) => [r.id, r]));
+  const thumb = (id: string) => { const r = byId.get(id); return r ? inquiryThumb(r) : undefined; };
+  const analyses = new Map<string, PhotoAnalysis>(all.map((r) => [r.id, r.analysis]));
   const [grid, setGrid] = useState<GridRow>(DEFAULT);
   const [open, setOpen] = useState<{ id: string; url: string } | null>(null);
   const [say, setSay] = useState("");
@@ -24,14 +32,17 @@ export function GridView() {
   useEffect(() => { const s = liveQuery(() => db().grid.get("current")).subscribe((r) => setGrid(r ?? DEFAULT)); return () => s.unsubscribe(); }, []);
   const save = (patch: Partial<GridRow>) => { const next = { ...grid, ...patch, dirty: true }; setGrid(next); void db().grid.put(next); };
 
-  const done = lib.photos.filter((p) => p.status === "done" && lib.analyses.has(p.id));
-  const added = done.map((p) => p.id);
+  const done = all.filter((r) => r.inGrid);
+  const added = done.map((r) => r.id); // newest first, like a profile
+  // "by family": each photo's closest family from the reference look
+  const famOf: Record<string, string[]> = {};
+  if (lib.grouping) for (const r of done) { const m = matchFamilies(r.analysis, lib.grouping.families)[0]; if (m) (famOf[m.id] ??= []).push(r.id); }
   const order =
     grid.mode === "custom" ? [...grid.order.filter((id) => added.includes(id)), ...added.filter((id) => !grid.order.includes(id))]
-    : grid.mode === "family" ? byFamily(added, lib.grouping?.members ?? {})
-    : grid.mode === "flow" ? smoothFlow(added, lib.analyses) : added;
-  const jumps = biggestJumps(order.slice(0, 18), lib.analyses);
-  const nameOf = (id: string) => lib.photos.find((p) => p.id === id)?.name ?? "photo";
+    : grid.mode === "family" ? byFamily(added, famOf)
+    : grid.mode === "flow" ? smoothFlow(added, analyses) : added;
+  const jumps = biggestJumps(order.slice(0, 18), analyses);
+  const nameOf = (id: string) => byId.get(id)?.name ?? "photo";
 
   const reorder = (id: string, to: number) => {
     const next = moveTo(order, id, to);
@@ -39,26 +50,27 @@ export function GridView() {
     setSay(`${nameOf(id)} moved to position ${next.indexOf(id) + 1} of ${next.length}`);
   };
   const show = (id: string) => {
-    const p = lib.photos.find((x) => x.id === id);
-    if (!p) return;
-    setOpen({ id, url: URL.createObjectURL(p.original ?? p.thumb) }); // synced photos only have the thumbnail here
+    const r = byId.get(id);
+    if (!r) return;
+    setOpen({ id, url: inquiryImage(r) });
     requestAnimationFrame(() => dialog.current?.showModal());
   };
-  const close = () => { dialog.current?.close(); if (open) URL.revokeObjectURL(open.url); setOpen(null); };
+  const close = () => { dialog.current?.close(); setOpen(null); };
 
   return (
     <>
       <SiteHeader />
       <main className="container" data-theme={grid.theme}>
-        <div className="intro"><h1>Grid preview</h1><p className="note">3:4 tiles, centre-cropped from each photo. Drag a tile, or focus it and press Alt with an arrow key, to reorder.</p></div>
+        <div className="intro"><h1>Grid preview</h1><p className="note">Your photos from Compare and the Edit guide as 3:4 tiles, centre-cropped. Drag a tile, or focus it and press Alt with an arrow key, to reorder.</p></div>
         <p className="vh" role="status" aria-live="polite">{say}</p>
 
-        {!lib.loaded && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
-        {lib.loaded && !done.length && (
-          <section className="card empty"><h2 className="card-h">Nothing to lay out yet</h2><p className="note">Add reference photos first; they appear here as 3:4 tiles you can reorder.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>
+        {!inq.loaded && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
+        {inq.loaded && !all.length && (
+          <section className="card empty"><h2 className="card-h">Nothing to lay out yet</h2><p className="note">Photos you open in Compare or the Edit guide appear here, so you can see how they sit together on your profile.</p><div className="actions"><Link className="btn btn-primary" href="/compare">Compare a photo</Link><a className="btn btn-secondary" href="/edit">Open the Edit guide</a></div></section>
         )}
+        {inq.loaded && all.length > 0 && !done.length && <p className="note">Every photo is switched off below. Tick some to see them in the grid.</p>}
 
-        {done.length > 0 && (<>
+        {all.length > 0 && (<>
           <div className="grid-tools">
             <fieldset className="seg"><legend>Theme</legend>
               {(["light", "dark"] as const).map((t) => <button key={t} type="button" className="seg-b" aria-pressed={grid.theme === t} onClick={() => save({ theme: t })}>{t === "light" ? "Light" : "Dark"}</button>)}
@@ -113,6 +125,21 @@ export function GridView() {
             )}
           </div>
         </>)}
+
+        {all.length > 0 && (
+          <section className="in-grid" aria-labelledby="ig-h">
+            <div className="sec-head"><h2 id="ig-h">Photos in the grid</h2><p className="note">From Compare and the Edit guide, newest first.</p></div>
+            <ul className="hist-list">
+              {all.map((r) => (
+                <li key={r.id}>
+                  <img src={inquiryThumb(r)} alt="" className="ig-img" />
+                  <label className="check"><input key={`${r.id}:${r.inGrid}`} type="checkbox" defaultChecked={r.inGrid} onChange={(e) => void setInGrid(r.id, e.target.checked)} /> <span className="hist-name">{r.name}</span></label>
+                  <span className="sub">{r.kind === "edit" ? "Edit guide" : "Compare"}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <dialog ref={dialog} className="lightbox" onClose={close} aria-label="Full photo">
           {open && <img src={open.url} alt={nameOf(open.id)} />}

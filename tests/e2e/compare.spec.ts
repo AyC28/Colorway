@@ -18,6 +18,12 @@ test("compare matches a JPEG to a family with directions", async ({ page }) => {
   await page.locator('input[type="file"]').setInputFiles(join(REF, "comparison-photo.jpg"));
   await expect(page.getByRole("heading", { name: "Closest family" })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".sugg tbody tr").first()).toBeVisible();
+  await expect(page.locator(".glyph").first()).toBeVisible();
   await page.screenshot({ path: "test-results/compare.png", fullPage: true });
+  // leave and come back: the photo and its result are still there, and listed under previous photos
+  await page.getByRole("link", { name: "Inspiration" }).click();
+  await page.getByRole("link", { name: "Compare" }).click();
+  await expect(page.getByRole("heading", { name: "Closest family" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Open comparison-photo.jpg" })).toBeVisible();
   expect(errors).toEqual([]);
 });

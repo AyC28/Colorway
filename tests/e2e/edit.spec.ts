@@ -27,6 +27,10 @@ test("edit guide decodes a CR3 in the browser and fits slider ranges", async ({ 
   await expect(page.getByRole("heading", { name: /^Colour, toward/ })).toBeVisible();
   await page.screenshot({ path: "test-results/edit.png", fullPage: true });
   await expect(page.getByRole("button", { name: "Open another file" })).toBeVisible();
+  // a reload keeps the file (saved on this device) and refits
+  await page.reload();
+  await expect(page.locator(".file")).toHaveText("raw-test-2.CR3");
+  await expect(page.locator(".slider").first()).toBeVisible({ timeout: 30_000 });
   for (const f of moreCr3) {
     // a second file opens without reloading the page
     await page.locator('input[type="file"]').first().setInputFiles(f);

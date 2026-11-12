@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { CloudView } from "./cloud3d";
+import type { AxisLabel, CloudView } from "./cloud3d";
+
+const AXIS_TEXT: Record<AxisLabel["id"], string> = { light: "Light", dark: "Dark", red: "Red", green: "Green", yellow: "Yellow", blue: "Blue" };
 
 const STEPS = [
   { h: "One of your photos", p: "Shrunk to 96 by 64 pixels and read in your browser. Nothing is uploaded." },
-  { h: "Every pixel, placed by colour", p: "Lightness runs up the axis, hue goes around it, and the more colourful a pixel is, the further out it sits." },
+  { h: "Every pixel, placed by colour", p: "Dark to light runs up the middle. Around it, green faces red and blue faces yellow, so hue is the direction a pixel leans and the more colourful it is, the further out it sits." },
   { h: "Grouped into a palette", p: "Similar pixels pull together. Each group becomes one colour in the photo’s palette, with a hex code to copy." },
   { h: "Turn it around", p: "Drag the cloud, or focus it and use the arrow keys, to see the colour from every side." },
 ];
@@ -28,6 +30,7 @@ export function HomeView() {
   const [mode, setMode] = useState<"pending" | "3d" | "static">("pending");
   const [step, setStep] = useState(0);
   const [palette, setPalette] = useState<{ hex: string; neutral: boolean }[]>([]);
+  const [axes, setAxes] = useState<{ labels: AxisLabel[]; visible: number }>({ labels: [], visible: 0 });
 
   useEffect(() => {
     const run = canRun3D();
@@ -39,7 +42,7 @@ export function HomeView() {
       const { createCloud } = await import("./cloud3d"); // three.js loads only here
       if (disposed || !canvas.current) return;
       const dec = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-      view.current = createCloud(canvas.current, { ...d, rgb: dec(d.rgb), group: dec(d.group) });
+      view.current = createCloud(canvas.current, { ...d, rgb: dec(d.rgb), group: dec(d.group) }, (labels, visible) => setAxes({ labels, visible }));
       setMode("3d");
     }).catch(() => setMode("static"));
     return () => { disposed = true; view.current?.dispose(); view.current = null; };
@@ -85,6 +88,11 @@ export function HomeView() {
 
         <section id="story" ref={story} className="story" aria-label="How Colorway reads a photo">
           <div className="story-stage">
+            {mode === "3d" && axes.visible > 0.3 && (
+              <div className="axis-labels" aria-hidden="true" style={{ opacity: Math.min(1, (axes.visible - 0.3) / 0.4) }}>
+                {axes.labels.map((l) => <span key={l.id} className={`axis-l axis-${l.id}`} style={{ left: l.x, top: l.y }}>{AXIS_TEXT[l.id]}</span>)}
+              </div>
+            )}
             <canvas ref={canvas} className="story-canvas" hidden={mode !== "3d"} tabIndex={mode === "3d" ? 0 : -1} aria-label="The photo’s pixels as a 3D colour cloud. Drag or use the arrow keys to turn it." />
             {mode !== "3d" && (
               // eslint-disable-next-line @next/next/no-img-element

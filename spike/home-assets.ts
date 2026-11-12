@@ -49,7 +49,7 @@ await writeFile("public/home/points.json", JSON.stringify({
 }));
 
 // static fallbacks: the same projection the 3D view starts from
-const W = 900, H = 760, yaw = 0.7, pitch = 0.35, S = 1300, CH = 3.2;
+const W = 900, H = 760, yaw = 0.7, pitch = 0.35, S = 1300, CH = 2.1;
 const proj = (l: number, A: number, B: number) => {
   const x = (A * Math.cos(yaw) - B * Math.sin(yaw)) * CH, z = (A * Math.sin(yaw) + B * Math.cos(yaw)) * CH;
   const y = (l - 0.5) * 0.48;
@@ -60,8 +60,12 @@ const pts = Array.from({ length: GW * GH }, (_, i) => {
   return { ...proj(lab[0], lab[1], lab[2]), hex: `#${[grid[i * 3], grid[i * 3 + 1], grid[i * 3 + 2]].map((v) => v.toString(16).padStart(2, "0")).join("")}`, g: group[i] };
 }).sort((p, q) => q.depth - p.depth);
 const axis = (a1: number[], b1: number[]) => { const p = proj(a1[0], a1[1], a1[2]), q = proj(b1[0], b1[1], b1[2]); return `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="#6b6b6b" stroke-width="1.5"/>`; };
+const label = (t: string, at: number[], dx = 0, dy = 0) => { const p = proj(at[0], at[1], at[2]); return `<text x="${(p.x + dx).toFixed(1)}" y="${(p.y + dy).toFixed(1)}" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#2a2a2a" stroke="#e6e6e6" stroke-width="4" paint-order="stroke" text-anchor="middle">${t}</text>`; };
 const axes = axis([0, 0, 0], [1, 0, 0]) + axis([0.5, -0.12, 0], [0.5, 0.12, 0]) + axis([0.5, 0, -0.12], [0.5, 0, 0.12]);
-const svg = (colour: (p: (typeof pts)[number]) => string) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${axes}${pts.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.2" fill="${colour(p)}"/>`).join("")}</svg>`);
+// labels go on top of the dots, on a light pad so they stay readable over pixels
+const labels = label("Light", [1, 0, 0], 0, -10) + label("Dark", [0, 0, 0], 0, 24) + label("Red", [0.5, 0.125, 0], 22, 5) + label("Green", [0.5, -0.125, 0], -28, 5)
+  + label("Yellow", [0.5, 0, 0.125], 30, 5) + label("Blue", [0.5, 0, -0.125], -24, 5);
+const svg = (colour: (p: (typeof pts)[number]) => string) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${axes}${pts.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.2" fill="${colour(p)}"/>`).join("")}${labels}</svg>`);
 await sharp(svg((p) => p.hex)).webp({ quality: 88 }).toFile("public/home/cloud.webp");
 await sharp(svg((p) => pal[p.g].hex)).webp({ quality: 88 }).toFile("public/home/cloud-grouped.webp");
 console.log("home assets:", GW, "x", GH, "points,", pal.length, "palette colours:", pal.map((s) => s.hex).join(" "));

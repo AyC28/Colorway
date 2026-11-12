@@ -46,6 +46,33 @@ export interface GroupingRow {
 }
 
 export interface GridRow { key: "current"; order: string[]; mode: "added" | "family" | "flow" | "custom"; theme: "light" | "dark"; showFlow: boolean; dirty?: boolean }
+/**
+ * A photo opened in Compare or the Edit guide, kept on this device so it survives
+ * tab switches and can be reopened later. Never synced (like originals).
+ * Results are recomputed on open, so they follow the current families.
+ */
+export interface InquiryRow {
+  id: string;
+  kind: "compare" | "edit";
+  name: string;
+  createdAt: number;
+  /** what the page shows: the JPEG/PNG itself, or our neutral render of a RAW */
+  image: Blob;
+  /** ≤ 400 px thumbnail for lists and the grid */
+  thumb: Blob;
+  analysis: PhotoAnalysis;
+  /** shown in the Grid preview */
+  inGrid: boolean;
+  /** Edit guide only */
+  edit?: {
+    lin: Float32Array;
+    clipped: number | null;
+    stops: number | null;
+    raw: { camera: string; iso: number; shutter: number; aperture: number; craw: boolean; asShot: { rOverG: number; bOverG: number } | null; decodeMs: number } | null;
+    targetId?: string;
+  };
+}
+
 /** Deleted photos waiting to be deleted remotely. */
 export interface TombstoneRow { id: string; at: number }
 /** Small key-value store for sync bookkeeping. */
@@ -55,6 +82,7 @@ export class ColorwayDB extends Dexie {
   grid!: EntityTable<GridRow, "key">;
   tombstones!: EntityTable<TombstoneRow, "id">;
   meta!: EntityTable<MetaRow, "key">;
+  inquiries!: EntityTable<InquiryRow, "id">;
   photos!: EntityTable<PhotoRow, "id">;
   analyses!: EntityTable<AnalysisRow, "photoId">;
   grouping!: EntityTable<GroupingRow, "key">;
@@ -63,6 +91,7 @@ export class ColorwayDB extends Dexie {
     this.version(1).stores({ photos: "id, addedAt, status", analyses: "photoId, version", grouping: "key" });
     this.version(2).stores({ grid: "key" });
     this.version(3).stores({ tombstones: "id", meta: "key" });
+    this.version(4).stores({ inquiries: "id, kind, createdAt" });
   }
 }
 
