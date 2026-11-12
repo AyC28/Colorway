@@ -13,6 +13,8 @@ export interface Swatch {
   h: number;
   /** share of chroma-weighted mass, 0..1, sums to 1 over the palette */
   share: number;
+  /** true for black/grey/white tones (only in per-photo display palettes) */
+  neutral?: boolean;
 }
 
 /** Chromatic pixel sample: OKLab triplets + weight. */
@@ -21,7 +23,7 @@ export interface LabSample {
   w: Float32Array; // n
 }
 
-export function paletteFromSample(s: LabSample, k = CONFIG.paletteK, seed = 1): Swatch[] {
+export function paletteFromSample(s: LabSample, k: number = CONFIG.paletteK, seed = 1, mergeDist: number = CONFIG.paletteMergeDist): Swatch[] {
   const n = s.w.length;
   if (n < 8) return [];
   const res = kmeansBest(s.lab, s.w, 3, k, 4, seed);
@@ -32,7 +34,7 @@ export function paletteFromSample(s: LabSample, k = CONFIG.paletteK, seed = 1): 
   }
   // merge near-duplicates, closest pair first
   for (;;) {
-    let bi = -1, bj = -1, bd: number = CONFIG.paletteMergeDist;
+    let bi = -1, bj = -1, bd: number = mergeDist;
     for (let i = 0; i < items.length; i++)
       for (let j = i + 1; j < items.length; j++) {
         const d = Math.hypot(items[i].l - items[j].l, items[i].a - items[j].a, items[i].b - items[j].b);

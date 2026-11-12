@@ -2,7 +2,7 @@
  * Every tunable threshold in one place. Bump ANALYSIS_VERSION whenever a value
  * changes so stored analyses get recomputed.
  */
-export const ANALYSIS_VERSION = 1;
+export const ANALYSIS_VERSION = 2;
 
 export const CONFIG = {
   /** Long edge for analysis downscale (caller does the resize). */
@@ -18,6 +18,13 @@ export const CONFIG = {
   /** Chromatic pixels kept per photo for set/family pooling. */
   samplePerPhoto: 2500,
   toneBins: 64,
+  rgbBins: 64,
+  /** per-photo palette shows neutral tones once near-neutral pixels cover this share of the frame */
+  neutralPaletteMin: 0.3,
+  /** min pixel share for a single neutral swatch */
+  neutralSwatchMin: 0.08,
+  /** neutral tones closer than this (OKLab) merge, so we get ~black / grey / white rather than near-duplicates */
+  neutralMergeDist: 0.12,
   hueBins: 36,
   /** Soft tonal ranges in OKLab L for grading: shadows fade out over [s0,s1], highlights fade in over [h0,h1]. */
   grading: { s0: 0.3, s1: 0.5, h0: 0.65, h1: 0.85, satFull: 0.1, repL: [0.35, 0.6, 0.85] },
@@ -38,7 +45,18 @@ export const CONFIG = {
       [101, "often"],
     ] as [number, string][],
   },
-  families: { maxK: 8, minPerK: 5, minClusterSize: 3, restarts: 12 },
+  families: {
+    maxK: 8, minPerK: 5, minClusterSize: 3, restarts: 12,
+    /**
+     * Feature groups (indices into FEATURE_NAMES). Each group is scaled by one
+     * pooled SD, then by its weight. Hue has 3 two-d vectors (6 dims) vs 1
+     * brightness dim, so weight ≈ 1/√6 gives the two groups equal say.
+     */
+    groups: [
+      { name: "brightness", dims: [0], weight: 1 },
+      { name: "hue", dims: [1, 2, 3, 4, 5, 6], weight: 0.41 },
+    ],
+  },
   compare: {
     /** weight of palette distance relative to standardized feature distance */
     paletteWeight: 0.5,

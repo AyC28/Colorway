@@ -16,9 +16,9 @@ All analysis is pure TypeScript over RGBA arrays in `src/analysis/` (no DOM). Th
 ## Results on `reference/` (37 screenshots)
 | | |
 |---|---|
-| Families | k=3 (silhouette 0.27, with k=2 at 0.26, so the clustering is weak): **Muted** (23), **Vivid & cool** (8: blue, night, snow), **Warm & vivid** (6: golden hour) |
+| Families (v2: hue + brightness only) | k=7 (silhouette 0.34, best tested): **Golden** (8), **Teal** (7), **Olive & bright** (5), **Orange sky / blue ground** (5), **Blue** (4), **Blue & dark** (4), **Golden & dark** (4) |
 | Set | 66% of pixels near-neutral. The palette is olive/earth plus slate blues. Glow 49 ("sometimes") |
-| Compare | `comparison-photo.jpg` → **Muted** (score 1.17 vs 2.13 and 2.63). It produced 17 suggestions, too many for the UI, so Phase 2 should rank them and show about 6 |
+| Compare | `comparison-photo.jpg` → **Golden** (0.93), with **Olive & bright** a close second (0.98). The UI should show "also close to…" when scores are within about 10%. It produced 17+ suggestions, too many for the UI, so Phase 2 should rank them and show about 6 |
 | Glow | Calibrated against a visual check of 18 photos: crisp shots score 0–19 and glowy ones 68–100. Known false positives: a bright snow field (p05 = 91) and smooth sky gradients (p26 = 100, p19 = 80) |
 | Grading | Saturation reads low (4–40) because chroma-weighted means of opposite hues cancel out. Each range now has a `wheelHex` (hue at visible chroma) for the wheel dot, as well as the actual subtle tint |
 
@@ -44,6 +44,12 @@ This machine is faster than a mid-range laptop. The 10–20 s target for 50 phot
 - **Constraint:** the library uses WebAssembly threads (shared memory), so the page needs `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. In Phase 3, I'll scope those headers to `/edit`. Any cross-origin images or scripts there would need CORP/CORS headers.
 - No fallback to the embedded JPEG is needed.
 
+## Gate 1 feedback applied (v2)
+- **Families use hue and brightness only.** The features are mean lightness plus chroma-weighted hue vectors for the whole frame, the top half (sky) and the bottom half (ground). Saturation, neutral share and contrast are no longer used, which removes the unhelpful "Muted" family. The brightness and hue groups get equal weight (`CONFIG.families.groups`).
+- **Names:** a hue word (Red, Orange, Golden, Olive, Green, Teal, Blue, Violet, Pink), plus "bright" or "dark" when the family stands out from the set. A family with no single dominant hue is named by its sky and ground hues.
+- **Per-photo palette (`photoPalette`):** when at least 30% of the frame is near-neutral, a photo's own palette also shows up to 3 black/grey/white swatches (each covering at least 8% of the pixels). Shares are pixel shares. Set and family palettes stay chromatic only.
+- **Charts:** a Lightroom-style RGB histogram (64 bins per channel, smoothed, blended so overlaps read grey, yellow and cyan) and a compact hue chart filled with the hue spectrum. The new histogram data is `rgbHist`.
+
 ## Caveats
 - Some screenshots include the UI's carousel arrows (for example p32, p33). They're small and neutral, so they're excluded from the palettes, but they add a little to the tone stats.
-- Family names compare each family with the set (for example, "Muted" means more muted than the rest of your photos). Absolute words like "mid-dark" didn't separate this moody set.
+- Silhouette kept rising up to the k=7 cap (37 photos ÷ 5). With 50 photos the cap would be 8.

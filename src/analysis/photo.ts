@@ -57,10 +57,15 @@ export interface PhotoAnalysis {
   width: number;
   height: number;
   neutralShare: number;
+  /** chromatic palette (used for set/family pooling and compare) */
   palette: Swatch[];
+  /** display palette for this photo alone: adds black/grey/white tones when they cover a large part of the frame; shares are pixel shares */
+  photoPalette: Swatch[];
   topPalette: Swatch[];
   bottomPalette: Swatch[];
   toneHist: number[];
+  /** Lightroom-style per-channel sRGB histograms (normalized by pixel count) */
+  rgbHist: { r: number[]; g: number[]; b: number[] };
   hueHist: number[];
   tone: ToneStats;
   hsl: HslStat[];
@@ -73,11 +78,17 @@ export interface PhotoAnalysis {
   ms: number;
 }
 
+/**
+ * Family features: brightness + hue only (Gate 1 feedback).
+ * Hue vectors are the chroma-weighted mean of unit hue directions over
+ * chromatic pixels: angle = dominant hue, length = how concentrated it is.
+ * Saturation/neutral share deliberately left out.
+ */
 export const FEATURE_NAMES = [
-  "meanL", "meanA", "meanB",
-  "topA", "topB", "topC",
-  "botA", "botB", "botC",
-  "contrast", "neutralShare",
+  "meanL",
+  "hueX", "hueY",
+  "topHueX", "topHueY",
+  "botHueX", "botHueY",
 ] as const;
 
 export function analyzePhoto(rgba: Uint8ClampedArray | Uint8Array, width: number, height: number, seed = 1): PhotoAnalysis {
@@ -116,8 +127,18 @@ export function analyzePhoto(rgba: Uint8ClampedArray | Uint8Array, width: number
   const palette = paletteFromSample(sampleAll, CONFIG.paletteK, seed);
   const topPalette = paletteFromSample(sampleTop, CONFIG.paletteK, seed);
   const bottomPalette = paletteFromSample(sampleBot, CONFIG.paletteK, seed);
+  const photoPalette = withNeutrals(P, palette, neutralShare, seed);
 
   // ---------- histograms + tone stats ----------
+  const RB = CONFIG.rgbBins;
+  const rgbHist = { r: new Array(RB).fill(0), g: new Array(RB).fill(0), b: new Array(RB).fill(0) };
+  for (let i = 0; i < P.n; i++) {
+    const o = P.idx[i] * 4;
+    rgbHist.r[(rgba[o] * RB) >> 8]++;
+    rgbHist.g[(rgba[o + 1] * RB) >> 8]++;
+    rgbHist.b[(rgba[o + 2] * RB) >> 8]++;
+  }
+  for (const ch of [rgbHist.r, rgbHist.g, rgbHist.b]) for (let i = 0; i < RB; i++) ch[i] /= P.n || 1;
   const toneHist = new Array(CONFIG.toneBins).fill(0);
   const hueHist = new Array(CONFIG.hueBins).fill(0);
   let hueMass = 0, sumL = 0, sumA = 0, sumB = 0;
@@ -160,29 +181,55 @@ export function analyzePhoto(rgba: Uint8ClampedArray | Uint8Array, width: number
   const glow = glowScore(P);
 
   // ---------- family features ----------
-  const halfMean = (top: boolean) => {
-    let m = 0, a = 0, b = 0, c = 0, cnt = 0;
-    for (let i = 0; i < P.n; i++) {
-      if (isTop(i) !== top) continue;
+  const hueVec = (filter: (i: number) => boolean) => {
+    let x = 0, y = 0, m = 0;
+    for (const i of chromaticIdx) {
+      if (!filter(i)) continue;
       const w = P.C[i];
-      m += w; a += P.A[i] * w; b += P.B[i] * w; c += P.C[i]; cnt++;
+      x += (P.A[i] / P.C[i]) * w; y += (P.B[i] / P.C[i]) * w; m += w;
     }
-    return { a: m ? a / m : 0, b: m ? b / m : 0, c: cnt ? c / cnt : 0 };
+    return m ? [x / m, y / m] : [0, 0];
   };
-  const top = halfMean(true), bot = halfMean(false);
   const features = [
-    tone.meanL, tone.meanA, tone.meanB,
-    top.a, top.b, top.c,
-    bot.a, bot.b, bot.c,
-    tone.p95 - tone.p5, neutralShare,
+    tone.meanL,
+    ...hueVec(() => true),
+    ...hueVec(isTop),
+    ...hueVec((i) => !isTop(i)),
   ];
 
   return {
-    width, height, neutralShare, palette, topPalette, bottomPalette,
-    toneHist, hueHist, tone, hsl, grading, glow, features,
+    width, height, neutralShare, palette, photoPalette, topPalette, bottomPalette,
+    toneHist, rgbHist, hueHist, tone, hsl, grading, glow, features,
     sample: { all: sampleAll, top: sampleTop, bottom: sampleBot },
     ms: performance.now() - t0,
   };
+}
+
+/**
+ * Per-photo display palette. When near-neutral pixels (black, grey, white)
+ * cover at least `neutralPaletteMin` of the frame, add up to 3 neutral
+ * swatches. All shares become pixel shares: neutral swatches by their own
+ * pixel count, chromatic swatches scaled by the chromatic pixel share.
+ */
+function withNeutrals(P: Planes, chromatic: Swatch[], neutralShare: number, seed: number): Swatch[] {
+  const chromaShare = 1 - neutralShare;
+  const out: Swatch[] = chromatic.map((s) => ({ ...s, share: s.share * chromaShare }));
+  if (neutralShare >= CONFIG.neutralPaletteMin) {
+    const idx: number[] = [];
+    for (let i = 0; i < P.n; i++) if (P.C[i] <= CONFIG.chromaThreshold) idx.push(i);
+    const m = Math.min(idx.length, CONFIG.samplePerPhoto);
+    const step = idx.length / m;
+    const lab = new Float32Array(m * 3), w = new Float32Array(m).fill(1);
+    for (let j = 0; j < m; j++) {
+      const i = idx[Math.floor(j * step)];
+      lab[j * 3] = P.L[i]; lab[j * 3 + 1] = P.A[i]; lab[j * 3 + 2] = P.B[i];
+    }
+    for (const s of paletteFromSample({ lab, w }, 3, seed, CONFIG.neutralMergeDist)) {
+      const share = s.share * neutralShare;
+      if (share >= CONFIG.neutralSwatchMin) out.push({ ...s, share, neutral: true });
+    }
+  }
+  return out.filter((s) => s.share >= 0.02).sort((a, b) => b.share - a.share);
 }
 
 /** Soft tonal weights shared by grading (per-photo) and the edit model. */

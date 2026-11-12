@@ -15,6 +15,7 @@ export interface GroupSummary {
   topPalette: Swatch[];
   bottomPalette: Swatch[];
   toneHist: number[];
+  rgbHist: { r: number[]; g: number[]; b: number[] };
   hueHist: number[];
   tone: ToneStats;
   hsl: HslStat[];
@@ -69,6 +70,11 @@ export function summarize(photos: PhotoAnalysis[], seed = 1): GroupSummary {
     toneHist: meanVec(photos.map((p) => p.toneHist)),
     hueHist: meanVec(photos.map((p) => p.hueHist)),
     tone, hsl, grading, glow,
+    rgbHist: {
+      r: meanVec(photos.map((p) => p.rgbHist.r)),
+      g: meanVec(photos.map((p) => p.rgbHist.g)),
+      b: meanVec(photos.map((p) => p.rgbHist.b)),
+    },
     features: meanVec(photos.map((p) => p.features)),
   };
 }
@@ -77,9 +83,15 @@ export function summarize(photos: PhotoAnalysis[], seed = 1): GroupSummary {
 
 export interface Standardizer { mu: number[]; sd: number[] }
 
+/** Per-group pooled SD (keeps hue-vector geometry intact), divided by the group weight. */
 export function standardizer(vs: number[][]): Standardizer {
   const mu = meanVec(vs);
-  const sd = mu.map((m, i) => Math.sqrt(mean(vs.map((v) => (v[i] - m) ** 2))) || 1);
+  const sd = mu.map(() => 1);
+  for (const g of CONFIG.families.groups) {
+    const v = mean(g.dims.map((d) => mean(vs.map((x) => (x[d] - mu[d]) ** 2))));
+    const pooled = Math.sqrt(v) || 1;
+    for (const d of g.dims) sd[d] = pooled / g.weight;
+  }
   return { mu, sd };
 }
 export const zscore = (v: number[], s: Standardizer) => v.map((x, i) => (x - s.mu[i]) / s.sd[i]);
@@ -156,39 +168,45 @@ export function buildFamilies(photos: PhotoAnalysis[], seed = 1): FamilyResult {
   return { k: families.length, silhouettes, standardizer: std, families };
 }
 
-/**
- * Plain-language names. Traits are picked by how much the family stands out
- * from the whole set (z-score of its centroid), so a moody set still gets
- * distinguishable names; the words come from fixed rules.
- */
-const TRAITS = [
-  { key: "light", f: (v: number[]) => v[0], pos: "bright", neg: "dark" },
-  { key: "warmth", f: (v: number[]) => v[2] + 0.3 * v[1], pos: "warm", neg: "cool" },
-  { key: "contrast", f: (v: number[]) => v[9], pos: "high-contrast", neg: "low-contrast" },
-  { key: "chroma", f: (v: number[]) => -v[10], pos: "vivid", neg: "muted" },
-] as const;
-
-export function describeTraits(features: number[], all: number[][]): { word: string; z: number }[] {
-  return TRAITS.map((t) => {
-    const xs = all.map(t.f);
-    const mu = mean(xs);
-    const sd = Math.sqrt(mean(xs.map((x) => (x - mu) ** 2))) || 1;
-    const z = (t.f(features) - mu) / sd;
-    return { word: z >= 0 ? t.pos : t.neg, z };
-  }).sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
+/** Photographer-friendly hue words over OKLCH hue (degrees). */
+const HUE_WORDS: [number, string][] = [
+  [30, "Red"], [62, "Orange"], [95, "Golden"], [125, "Olive"], [160, "Green"],
+  [215, "Teal"], [270, "Blue"], [310, "Violet"], [350, "Pink"], [360, "Red"],
+];
+export function hueWord(x: number, y: number): string {
+  if (Math.hypot(x, y) < 0.15) return "Mixed-hue";
+  return HUE_WORDS.find(([lim]) => hueDeg(x, y) < lim)![1];
 }
 
+/**
+ * Names from hue + brightness only: "<hue> & <bright|dark>", the brightness
+ * word only when the family stands out from the set (|z| ≥ 0.5). Duplicates
+ * get their sky/ground hues, e.g. "Green, blue sky".
+ */
 function nameFamilies(families: Family[], all: number[][]) {
-  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const Ls = all.map((v) => v[0]);
+  const mu = mean(Ls), sd = Math.sqrt(mean(Ls.map((x) => (x - mu) ** 2))) || 1;
+  const base = families.map((fam) => {
+    const f = fam.summary.features;
+    const z = (f[0] - mu) / sd;
+    const light = z >= 0.5 ? "bright" : z <= -0.5 ? "dark" : "";
+    let hue = hueWord(f[1], f[2]);
+    // no single dominant hue but sky and ground each have one (e.g. sunset over water)
+    const sky = hueWord(f[3], f[4]), ground = hueWord(f[5], f[6]);
+    if (hue === "Mixed-hue" && sky !== "Mixed-hue" && ground !== "Mixed-hue" && sky !== ground)
+      hue = `${sky} sky / ${ground.toLowerCase()} ground`;
+    return [hue, light].filter(Boolean).join(" & ");
+  });
   const used = new Map<string, number>();
-  for (const fam of families) {
-    const traits = describeTraits(fam.summary.features, all).filter((t) => Math.abs(t.z) >= 0.35);
-    let words = traits.slice(0, 2).map((t) => t.word);
-    if (!words.length) words = ["balanced"];
-    let name = cap(words.join(" & "));
-    if (used.has(name) && traits[2]) name = `${name}, ${traits[2].word}`;
+  families.forEach((fam, i) => {
+    let name = base[i];
+    if (base.filter((b) => b === name).length > 1) {
+      const f = fam.summary.features;
+      const sky = hueWord(f[3], f[4]).toLowerCase(), ground = hueWord(f[5], f[6]).toLowerCase();
+      name += sky !== ground ? `, ${sky} sky / ${ground} ground` : "";
+    }
     const c = (used.get(name) ?? 0) + 1;
     used.set(name, c);
     fam.name = c > 1 ? `${name} ${c}` : name;
-  }
+  });
 }
