@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncStatus } from "@/sync/status";
 
 const SECTIONS = [
   { href: "/inspiration", label: "Inspiration" },
@@ -12,6 +13,7 @@ const SECTIONS = [
 /** App bar. /edit is linked with a plain <a> so it loads as a full document (cross-origin isolation for RAW decoding). */
 export function SiteHeader({ action }: { action?: React.ReactNode }) {
   const path = usePathname();
+  const { user } = useSyncStatus();
   return (
     <header className="bar container">
       <Link className="wordmark" href="/" aria-label="Colorway home">Colorway</Link>
@@ -24,7 +26,10 @@ export function SiteHeader({ action }: { action?: React.ReactNode }) {
           })}
         </ul>
       </nav>
-      {action ?? <Link className="btn btn-secondary" href="/login">Sign in</Link>}
+      <span className="bar-actions">
+        {action}
+        {user ? <Link className="bar-account" href="/account">Account</Link> : <Link className="btn btn-secondary" href="/login">Sign in</Link>}
+      </span>
     </header>
   );
 }

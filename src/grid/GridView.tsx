@@ -22,7 +22,7 @@ export function GridView() {
   const dragId = useRef<string | null>(null);
 
   useEffect(() => { const s = liveQuery(() => db().grid.get("current")).subscribe((r) => setGrid(r ?? DEFAULT)); return () => s.unsubscribe(); }, []);
-  const save = (patch: Partial<GridRow>) => { const next = { ...grid, ...patch }; setGrid(next); void db().grid.put(next); };
+  const save = (patch: Partial<GridRow>) => { const next = { ...grid, ...patch, dirty: true }; setGrid(next); void db().grid.put(next); };
 
   const done = lib.photos.filter((p) => p.status === "done" && lib.analyses.has(p.id));
   const added = done.map((p) => p.id);
@@ -41,7 +41,7 @@ export function GridView() {
   const show = (id: string) => {
     const p = lib.photos.find((x) => x.id === id);
     if (!p) return;
-    setOpen({ id, url: URL.createObjectURL(p.original) });
+    setOpen({ id, url: URL.createObjectURL(p.original ?? p.thumb) }); // synced photos only have the thumbnail here
     requestAnimationFrame(() => dialog.current?.showModal());
   };
   const close = () => { dialog.current?.close(); if (open) URL.revokeObjectURL(open.url); setOpen(null); };

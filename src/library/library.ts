@@ -29,7 +29,7 @@ export async function addPhotos(files: File[], onProgress?: (done: number, total
     const id = crypto.randomUUID();
     try {
       const { thumb, width, height } = await makeThumb(f);
-      rows.push({ id, name: f.name, kind: kindOf(f.type), width, height, addedAt: Date.now(), original: f, thumb, status: "queued" });
+      rows.push({ id, name: f.name, kind: kindOf(f.type), width, height, addedAt: Date.now(), original: f, thumb, status: "queued", dirty: true });
     } catch (e) {
       rows.push({ id, name: f.name, kind: kindOf(f.type), width: 0, height: 0, addedAt: Date.now(), original: f, thumb: new Blob(), status: "error", error: e instanceof Error ? e.message : "Could not read this image" });
     }
@@ -45,14 +45,16 @@ export async function analysePending(onProgress?: (done: number, total: number) 
   const all = await d.photos.toArray();
   const have = new Map((await d.analyses.toArray()).map((a) => [a.photoId, a]));
   const todo = all.filter((p) => p.status !== "error" && !isCurrent(have.get(p.id)));
+  // a photo synced from another device has no original here: it can only use the analysis it came with
+  for (const p of todo.filter((x) => !x.original)) await d.photos.update(p.id, { status: "error", error: "The original is on another device; add it here to re-analyse" });
   let done = 0;
   onProgress?.(0, todo.length);
-  await Promise.all(todo.map(async (p) => {
+  await Promise.all(todo.filter((p) => p.original).map(async (p) => {
     await d.photos.update(p.id, { status: "analysing" });
     try {
-      const { analysis } = await getEngine().analyze(p.original, seedOf(p.id));
+      const { analysis } = await getEngine().analyze(p.original!, seedOf(p.id));
       await d.analyses.put({ photoId: p.id, version: ANALYSIS_VERSION, analysis });
-      await d.photos.update(p.id, { status: "done", error: undefined });
+      await d.photos.update(p.id, { status: "done", error: undefined, dirty: true });
     } catch (e) {
       await d.photos.update(p.id, { status: "error", error: e instanceof Error ? e.message : "Analysis failed" });
     }
@@ -96,7 +98,7 @@ export async function regroup() {
   }
   await resummarize(families.families, members, ready.map((p) => p.id), rows);
   const names = Object.fromEntries(Object.entries(prev?.names ?? {}).filter(([k]) => members[k]));
-  const row: GroupingRow = { key: "current", version: ANALYSIS_VERSION, photoIds: ready.map((p) => p.id), set, families, members, names, updatedAt: Date.now() };
+  const row: GroupingRow = { key: "current", version: ANALYSIS_VERSION, photoIds: ready.map((p) => p.id), set, families, members, names, updatedAt: Date.now(), dirty: true };
   await d.grouping.put(row);
 }
 
@@ -111,19 +113,19 @@ async function resummarize(fams: Family[], members: Record<string, string[]>, or
 }
 
 export async function movePhoto(photoId: string, familyId: string) {
-  await db().photos.update(photoId, { familyOverride: familyId });
+  await db().photos.update(photoId, { familyOverride: familyId, dirty: true });
   await regroup();
 }
 
 export async function renameFamily(familyId: string, name: string) {
   const g = await db().grouping.get("current");
   if (!g) return;
-  await db().grouping.update("current", { names: { ...g.names, [familyId]: name.trim() } });
+  await db().grouping.update("current", { names: { ...g.names, [familyId]: name.trim() }, updatedAt: Date.now(), dirty: true });
 }
 
 export async function removePhoto(id: string) {
   forgetThumb(id);
-  await db().transaction("rw", db().photos, db().analyses, async () => { await db().photos.delete(id); await db().analyses.delete(id); });
+  await db().transaction("rw", db().photos, db().analyses, db().tombstones, async () => { await db().photos.delete(id); await db().analyses.delete(id); await db().tombstones.put({ id, at: Date.now() }); });
   await regroup();
 }
 

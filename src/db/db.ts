@@ -16,14 +16,16 @@ export interface PhotoRow {
   width: number;
   height: number;
   addedAt: number;
-  /** the file as the user gave it: never synced */
-  original: Blob;
+  /** the file as the user gave it: never synced, so absent on other devices */
+  original?: Blob;
   /** ≤ 400 px WebP re-encoded through a canvas, so no EXIF or GPS */
   thumb: Blob;
   status: PhotoStatus;
   error?: string;
   /** set when the user moved this photo to a family by hand */
   familyOverride?: string;
+  /** changed since the last push (undefined counts as dirty) */
+  dirty?: boolean;
 }
 
 export interface AnalysisRow { photoId: string; version: number; analysis: PhotoAnalysis }
@@ -40,12 +42,19 @@ export interface GroupingRow {
   /** family id → the name the user gave it */
   names: Record<string, string>;
   updatedAt: number;
+  dirty?: boolean;
 }
 
-export interface GridRow { key: "current"; order: string[]; mode: "added" | "family" | "flow" | "custom"; theme: "light" | "dark"; showFlow: boolean }
+export interface GridRow { key: "current"; order: string[]; mode: "added" | "family" | "flow" | "custom"; theme: "light" | "dark"; showFlow: boolean; dirty?: boolean }
+/** Deleted photos waiting to be deleted remotely. */
+export interface TombstoneRow { id: string; at: number }
+/** Small key-value store for sync bookkeeping. */
+export interface MetaRow { key: string; value: string }
 
 export class ColorwayDB extends Dexie {
   grid!: EntityTable<GridRow, "key">;
+  tombstones!: EntityTable<TombstoneRow, "id">;
+  meta!: EntityTable<MetaRow, "key">;
   photos!: EntityTable<PhotoRow, "id">;
   analyses!: EntityTable<AnalysisRow, "photoId">;
   grouping!: EntityTable<GroupingRow, "key">;
@@ -53,6 +62,7 @@ export class ColorwayDB extends Dexie {
     super("colorway");
     this.version(1).stores({ photos: "id, addedAt, status", analyses: "photoId, version", grouping: "key" });
     this.version(2).stores({ grid: "key" });
+    this.version(3).stores({ tombstones: "id", meta: "key" });
   }
 }
 
