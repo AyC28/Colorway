@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader } from "@/ui/SiteHeader";
 import { HexButton } from "@/ui/HexButton";
 import { FullAnalysis, Histogram, HueChart, PaletteCards, Strip, Wheel, Estimated, pct } from "@/ui/viz";
-import { addPhotos, analysePending, MAX_PHOTOS, movePhoto } from "@/library/library";
+import { addPhotos, analysePending, loadStarterSet, MAX_PHOTOS, movePhoto } from "@/library/library";
 import { useLibrary, useThumbUrls } from "@/library/hooks";
 import type { Family } from "@/analysis/group";
 import { AddPhotos } from "./AddPhotos";
@@ -18,6 +18,19 @@ export function InspirationView() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => { void analysePending((done, total) => setProgress(total ? { done, total } : null)).finally(() => setProgress(null)); }, []);
+  const starter = async () => {
+    setNotice(null);
+    try { await loadStarterSet((done, total) => setProgress({ done, total })); } catch { setNotice("The starter set could not be loaded. Check your connection and try again."); }
+    setProgress(null);
+  };
+  // arriving from Home's "Try the starter set" with an empty library: load it straight away
+  const wantsStarter = lib.loaded && lib.photos.length === 0 && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("starter");
+  useEffect(() => {
+    if (!wantsStarter) return;
+    window.history.replaceState(null, "", "/inspiration");
+    const t = setTimeout(() => void starter(), 0);
+    return () => clearTimeout(t);
+  }, [wantsStarter]);
 
   const busy = !!progress && progress.done < progress.total;
   const ingest = async (files: File[]) => {
@@ -57,7 +70,8 @@ export function InspirationView() {
           <section className="card empty" aria-labelledby="empty-h">
             <h2 id="empty-h" className="card-h">Start with photos you love</h2>
             <p className="note">Add up to {MAX_PHOTOS} reference photos, or drop them anywhere on this page. They are analysed on this device and the originals never leave it.</p>
-            <div className="actions">{add}</div>
+            <div className="actions">{add}<button type="button" className="btn btn-secondary" onClick={starter} disabled={busy}>Try the starter set</button></div>
+            <p className="note">The starter set is 27 photos by the photographer who made Colorway.</p>
           </section>
         )}
 

@@ -1,9 +1,9 @@
 /**
- * Builds the Home story assets from the user's own R6 test photo:
+ * Builds the Home story assets from one of the user's own photos (an edited JPG, or a RAW's embedded preview):
  *   public/home/sample.webp       the photo (embedded camera JPEG, metadata stripped)
  *   public/home/points.json       a pixel grid: sRGB bytes + palette group per pixel
  *   public/home/cloud*.webp       static fallbacks (reduced motion, phones, low power)
- * Usage: npx tsx spike/home-assets.ts [reference/raw-test-2.CR3]
+ * Usage: npx tsx spike/home-assets.ts [starter-set/043A7001.jpg]
  */
 import { readFile, writeFile } from "node:fs/promises";
 import sharp from "sharp";
@@ -11,13 +11,16 @@ import { librawClient } from "./libraw-node";
 import { analyzePhoto } from "../src/analysis/photo";
 import { linearToOklab, SRGB_TO_LINEAR } from "../src/analysis/color";
 
-const src = process.argv[2] ?? "reference/raw-test-2.CR3";
-const c = librawClient();
-await c.call("open", new Uint8Array(await readFile(src)), {});
-const th = await c.call("thumbnailData");
-c.close();
-if (!th || th.format !== "jpeg") throw new Error("No embedded JPEG preview in this RAW");
-const jpeg = Buffer.from(th.data);
+const src = process.argv[2] ?? "starter-set/043A7001.jpg";
+let jpeg: Buffer;
+if (/\.(cr3|cr2|nef|arw|dng)$/i.test(src)) {
+  const c = librawClient();
+  await c.call("open", new Uint8Array(await readFile(src)), {});
+  const th = await c.call("thumbnailData");
+  c.close();
+  if (!th || th.format !== "jpeg") throw new Error("No embedded JPEG preview in this RAW");
+  jpeg = Buffer.from(th.data);
+} else jpeg = await readFile(src);
 
 // sharp drops EXIF/GPS unless asked to keep it
 await sharp(jpeg).rotate().resize(1400).webp({ quality: 82 }).toFile("public/home/sample.webp");

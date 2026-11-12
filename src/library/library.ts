@@ -39,6 +39,13 @@ export async function addPhotos(files: File[], onProgress?: (done: number, total
   return accepted.length;
 }
 
+/** The public starter set (the photographer's own photos, metadata-free WebP) loaded into the library. */
+export async function loadStarterSet(onProgress?: (done: number, total: number) => void) {
+  const { photos } = (await (await fetch("/starter/manifest.json")).json()) as { photos: { file: string }[] };
+  const files = await Promise.all(photos.map(async (p) => new File([await (await fetch(`/starter/${p.file}`)).blob()], p.file, { type: "image/webp" })));
+  return addPhotos(files, onProgress);
+}
+
 /** Analyse every photo without a current analysis (new photos, or after a version bump). */
 export async function analysePending(onProgress?: (done: number, total: number) => void) {
   const d = db();

@@ -5,6 +5,8 @@ import { join } from "node:path";
 const REF = "reference";
 const pngs = existsSync(REF) ? readdirSync(REF).filter((f) => f.endsWith(".png")).sort().map((f) => join(REF, f)) : [];
 const cr3 = join(REF, "raw-test-2.CR3");
+// the user's own extra CR3s (gitignored), tested too when present
+const moreCr3 = ["starter-set/043A7001.CR3", "starter-set/043A0922.CR3"].filter((f) => existsSync(f));
 
 test("edit guide decodes a CR3 in the browser and fits slider ranges", async ({ page }) => {
   test.skip(pngs.length < 15 || !existsSync(cr3), "needs reference/ photos and a CR3");
@@ -24,5 +26,12 @@ test("edit guide decodes a CR3 in the browser and fits slider ranges", async ({ 
   await expect(page.getByText("Compressed C-RAW")).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Colour, toward/ })).toBeVisible();
   await page.screenshot({ path: "test-results/edit.png", fullPage: true });
+  for (const f of moreCr3) {
+    await page.reload();
+    await page.locator('input[type="file"]').first().setInputFiles(f);
+    await expect(page.locator(".slider").first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText("Canon EOS R6")).toBeVisible();
+    console.log(`${f}: ranges shown`);
+  }
   expect(errors).toEqual([]);
 });

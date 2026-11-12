@@ -71,12 +71,12 @@ export function HomeView() {
           <div className="hero-text">
             <h1 id="hero-h">See the colour in your photos</h1>
             <p className="lead">Colorway reads the photos you love and shows the palette behind them.</p>
-            <div className="actions"><Link className="btn btn-primary btn-lg" href="/inspiration">Try it with your photos</Link><a className="btn btn-secondary btn-lg" href="#story">See how it works</a></div>
+            <div className="actions"><Link className="btn btn-primary btn-lg" href="/inspiration?starter=1">Try the starter set</Link><Link className="btn btn-secondary btn-lg" href="/inspiration">Upload your photos</Link></div>
             <p className="privacy">Analysed in your browser. Your originals never leave your device.</p>
           </div>
           <figure className="hero-photo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/home/sample.webp" width={1400} height={933} alt="A castle tower by a lake at sunset, pink sky over dark trees" fetchPriority="high" />
+            <img src="/home/sample.webp" width={1400} height={933} alt="A red-brick Victorian building with a clock tower behind summer trees, under a clear blue sky" fetchPriority="high" />
             <figcaption>Scroll to take this photo apart.</figcaption>
           </figure>
         </section>
