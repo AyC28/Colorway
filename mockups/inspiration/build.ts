@@ -144,40 +144,103 @@ function darkroom() {
 
 // ================================================================ B · Terrazzo: a specimen sheet
 function terrazzo() {
-  const sel = families[0];
-  const card = (s: Sw) => `<li class="spec-card"><div class="spec-field" style="--sw:${tok(s.hex)}"></div>
-    <div class="spec-cap">${hexButton(s.hex)}<span class="num">${pct(s.share)}</span><span class="spec-hue">${hueName(s.h)}, <span class="num">${Math.round(s.h)}°</span></span></div></li>`;
-  const row = (f: any, i: number) => `<tr${i === 0 ? ' class="is-selected" aria-selected="true"' : ""}>
-    <th scope="row"><a href="#family">${esc(f.name)}</a></th><td class="num">${f.members.length}</td>
-    <td>${strip(f.summary.palette, "strip strip-row")}</td>
-    <td>${strip(f.summary.topPalette.slice(0, 5), "strip strip-mini")}${strip(f.summary.bottomPalette.slice(0, 5), "strip strip-mini")}</td>
-    <td class="num">${Math.round(f.summary.tone.p50 * 100)}</td><td class="num">${f.summary.glow.score ?? "–"}</td></tr>`;
-  const ph = (p: any) => `<li class="ph-card">${img(p, "ph-img")}${strip(p.photoPalette, "strip strip-ph")}
-    <p class="ph-hex">${p.photoPalette.slice(0, 3).map((s: Sw) => hexButton(s.hex)).join("")}</p></li>`;
-  return `${head("Colorway inspiration", "page.css")}<body>
-<header class="bar container"><a class="wordmark" href="#" aria-label="Colorway home">Colorway</a>${nav("links")}<a class="btn btn-primary" href="#">Add photos</a></header>
+  return tzPage(`${head("Colorway inspiration", "page.css")}<body>
+${tzBar()}
 <main class="container">
   <div class="intro"><h1>Your reference look</h1>
     <dl class="facts"><div><dt>Photos</dt><dd class="num">${set.count}</dd></div><div><dt>Families</dt><dd class="num">${families.length}</dd></div><div><dt>Near-neutral</dt><dd class="num">${pct(set.neutralShare)}</dd></div></dl></div>
-  <section aria-labelledby="drawer-h"><h2 id="drawer-h">The palette, by share</h2><p class="note">${neutralNote}</p>
-    <ol class="drawer">${set.palette.map(card).join("")}</ol></section>
-  <div class="two">
-    <section aria-labelledby="fam-h"><h2 id="fam-h">Families</h2>
-      <table class="spec"><thead><tr><th scope="col">Family</th><th scope="col">Photos</th><th scope="col">Palette</th><th scope="col">Sky, ground</th><th scope="col">Brightness</th><th scope="col">Glow</th></tr></thead>
-      <tbody>${families.map(row).join("")}</tbody></table>
-      <p class="note">Brightness is the median lightness, 0 to 100. Families are grouped by hue and brightness only.</p></section>
-    <section id="family" class="card" aria-labelledby="sel-h"><h2 id="sel-h">${esc(sel.name)}</h2>
-      <ul class="sel-photos">${famPhotos(sel).map((p: any) => `<li>${img(p, "sel-img")}</li>`).join("")}</ul>
-      <h3>Histogram</h3>${histogram(sel.summary.rgbHist, 300, 80)}
-      <h3>Hue</h3>${hueChart(sel.summary.hueHist, 300, 48)}
-      <div class="h-row"><h3>Color grading</h3>${est}</div><div class="wheels">${sel.summary.grading.map((g: any) => `<figure>${wheel(g, 64)}<figcaption>${g.range}<span class="num">${Math.round(g.hue)}°, ${g.sat}</span></figcaption></figure>`).join("")}</div>
-      <div class="h-row"><h3>Glow</h3>${est}</div><p class="glow"><span class="figure num">${sel.summary.glow.score}</span> of 100, ${sel.summary.glow.label} ${hexButton(sel.summary.glow.hex)}</p>
-    </section>
-  </div>
-  <section aria-labelledby="every-h"><h2 id="every-h">Every photo</h2><ul class="ph-grid">${photos.map(ph).join("")}</ul></section>
+
+  <section class="look" aria-labelledby="pal-h">
+    <div class="sec-head"><h2 id="pal-h">The palette</h2><p class="note">Colourful pixels only, largest first. Greys are counted separately.</p></div>
+    ${paletteCards(set.palette)}
+    <details class="more">
+      <summary class="btn btn-secondary">Show full analysis</summary>
+      ${fullAnalysis(set)}
+    </details>
+  </section>
+
+  <section class="fams" aria-labelledby="fam-h">
+    <div class="sec-head"><h2 id="fam-h">Families</h2><p class="note">Grouped by hue and brightness. Hover to preview, open one for the full breakdown.</p></div>
+    <div class="fam-grid">
+      <ol class="fam-list">${families.map((f, i) => famRow(f, i)).join("")}</ol>
+      <div class="previews" aria-live="polite">${families.map((f, i) => famPreview(f, i)).join("")}</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="every-h"><div class="sec-head"><h2 id="every-h">Every photo</h2><p class="note">Each photo’s own palette includes its greys when they fill a large part of the frame.</p></div>
+    <ul class="ph-grid">${photos.map(phCard).join("")}</ul></section>
 </main>
-<p id="live" class="vh" role="status" aria-live="polite"></p>${copyScript}</body></html>`;
+<p id="live" class="vh" role="status" aria-live="polite"></p>${copyScript}${previewScript}</body></html>`);
 }
+
+/** Family detail: what a click on a family opens. */
+function terrazzoFamily(f: any) {
+  const ps = famPhotos(f);
+  return tzPage(`${head(`${f.name}, Colorway`, "page.css")}<body>
+${tzBar()}
+<main class="container">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="./index.html">Your reference look</a><span aria-hidden="true">/</span><span aria-current="page">${esc(f.name)}</span></nav>
+  <div class="intro"><div class="name-row"><h1>${esc(f.name)}</h1><button type="button" class="btn btn-secondary btn-sm">Rename</button></div>
+    <dl class="facts"><div><dt>Photos</dt><dd class="num">${f.members.length}</dd></div><div><dt>Brightness</dt><dd class="num">${Math.round(f.summary.tone.p50 * 100)}</dd></div><div><dt>Glow</dt><dd class="num">${f.summary.glow.score}</dd></div></dl></div>
+  <section aria-labelledby="fph-h"><div class="sec-head"><h2 id="fph-h">Photos in this family</h2><p class="note">Drag a photo onto another family in the list to move it.</p></div>
+    <ul class="ph-grid">${ps.map(phCard).join("")}</ul></section>
+  <section aria-labelledby="fp-h"><div class="sec-head"><h2 id="fp-h">The palette</h2><p class="note">Colourful pixels only, largest first.</p></div>${paletteCards(f.summary.palette)}</section>
+  ${fullAnalysis(f.summary, true)}
+</main>
+<p id="live" class="vh" role="status" aria-live="polite"></p>${copyScript}</body></html>`);
+}
+
+const tzPage = (html: string) => html;
+const tzBar = () => `<header class="bar container"><a class="wordmark" href="./index.html" aria-label="Colorway home">Colorway</a>${nav("links")}<a class="btn btn-primary" href="#">Add photos</a></header>`;
+
+/** Role words instead of percentages: Main until half the colour is covered, Supporting to 85%, then Accent. */
+function roles(p: Sw[]) {
+  let cum = 0;
+  return p.map((s) => { const r = cum < 0.5 ? "Main" : cum < 0.85 ? "Supporting" : "Accent"; cum += s.share; return r; });
+}
+function paletteCards(p: Sw[]) {
+  const max = Math.max(...p.map((s) => s.share));
+  const rs = roles(p);
+  return `<ol class="drawer">${p
+    .map((s, i) => `<li class="spec-card"><div class="spec-field" style="--sw:${tok(s.hex)}"></div>
+      <div class="spec-cap"><span class="role">${rs[i]}</span>${hexButton(s.hex)}<span class="spec-hue">${hueName(s.h)}, <span class="num">${Math.round(s.h)}°</span></span>
+      <span class="amount" role="img" aria-label="${rs[i]} colour"><span style="--w:${((s.share / max) * 100).toFixed(0)}%"></span></span></div></li>`)
+    .join("")}</ol>`;
+}
+function fullAnalysis(s: any, open = false) {
+  return `<div class="analysis${open ? " analysis-open" : ""}">
+    <section class="an an-sky"><h3>Sky, top half</h3>${strip(s.topPalette, "strip strip-band")}<h3>Ground, bottom half</h3>${strip(s.bottomPalette, "strip strip-band")}</section>
+    <section class="an"><h3>Histogram</h3>${histogram(s.rgbHist, 300, 96)}<h3>Hue</h3>${hueChart(s.hueHist, 300, 52)}</section>
+    <section class="an"><div class="h-row"><h3>Color grading</h3>${est}</div><div class="wheels">${s.grading.map((g: any) => `<figure>${wheel(g, 72)}<figcaption>${g.range}<span class="num">${Math.round(g.hue)}°, ${g.sat}</span></figcaption></figure>`).join("")}</div>
+      <div class="h-row"><h3>Glow</h3>${est}</div><p class="glow"><span class="figure num">${s.glow.score}</span> of 100, ${s.glow.label}</p>
+      <p class="glow-tint"><span class="chip" style="--sw:${tok(s.glow.hex)}"></span>Halo tint ${hexButton(s.glow.hex)}</p></section>
+  </div>`;
+}
+function famRow(f: any, i: number) {
+  const ps = famPhotos(f);
+  return `<li><a class="fam-row${i === 0 ? " is-active" : ""}" href="./family-${f.id}.html" data-preview="${f.id}">
+    <span class="fam-mosaic">${ps.slice(0, 4).map((p: any) => img(p, "fam-img")).join("")}</span>
+    <span class="fam-body"><span class="fam-name">${esc(f.name)}</span><span class="fam-n"><span class="num">${f.members.length}</span> photos</span>
+      ${strip(f.summary.palette, "strip strip-row")}
+      <span class="fam-stats"><span>Brightness <b class="num">${Math.round(f.summary.tone.p50 * 100)}</b></span><span>Glow <b class="num">${f.summary.glow.score}</b></span></span></span></a></li>`;
+}
+function famPreview(f: any, i: number) {
+  const ps = famPhotos(f);
+  return `<article class="card preview" data-family="${f.id}" ${i === 0 ? "" : "hidden"} aria-label="${esc(f.name)} preview">
+    <div class="h-row"><h3 class="pv-name">${esc(f.name)}</h3><a class="pv-open" href="./family-${f.id}.html">Open family</a></div>
+    <ul class="sel-photos">${ps.slice(0, 8).map((p: any) => `<li>${img(p, "sel-img")}</li>`).join("")}</ul>
+    ${strip(f.summary.palette, "strip strip-band")}
+    <div class="pv-two"><div><h4>Histogram</h4>${histogram(f.summary.rgbHist, 300, 72)}</div><div><h4>Hue</h4>${hueChart(f.summary.hueHist, 300, 72)}</div></div>
+    <div class="h-row"><h4>Color grading</h4>${est}</div><div class="wheels">${f.summary.grading.map((g: any) => `<figure>${wheel(g, 56)}<figcaption>${g.range}</figcaption></figure>`).join("")}</div>
+  </article>`;
+}
+const phCard = (p: any) => `<li class="ph-card">${img(p, "ph-img")}${strip(p.photoPalette, "strip strip-ph")}
+  <p class="ph-hex">${p.photoPalette.slice(0, 3).map((s: Sw) => hexButton(s.hex)).join("")}</p></li>`;
+const previewScript = `<script>
+const rows = document.querySelectorAll("[data-preview]"), cards = document.querySelectorAll("[data-family]");
+const show = (id) => { cards.forEach((c) => (c.hidden = c.dataset.family !== id)); rows.forEach((r) => r.classList.toggle("is-active", r.dataset.preview === id)); };
+rows.forEach((r) => { r.addEventListener("mouseenter", () => show(r.dataset.preview)); r.addEventListener("focus", () => show(r.dataset.preview)); });
+</script>`;
 
 // ================================================================ C · Wayfind: a horizon board
 function wayfind() {
@@ -209,6 +272,7 @@ function wayfind() {
 
 const pages = { darkroom: darkroom(), terrazzo: terrazzo(), wayfind: wayfind() };
 for (const [k, html] of Object.entries(pages)) writeFileSync(`${DIR}/${k}/index.html`, html);
+for (const f of families) writeFileSync(`${DIR}/terrazzo/family-${f.id}.html`, terrazzoFamily(f).replace('loading="lazy"', 'loading="eager" fetchpriority="high"'));
 writeFileSync(
   `${DIR}/data.css`,
   `/* Generated by build.ts: measured colours from spike/out/results.json, as tokens. Data, not chrome. */\n:root {\n${[...dataTokens].map(([hex, name]) => `  ${name}: ${hex};`).join("\n")}\n}\n`,

@@ -158,7 +158,18 @@ export function buildFamilies(photos: PhotoAnalysis[], seed = 1): FamilyResult {
     });
   }
 
-  const groups = [...new Set(labels)].map((c) => [...labels.keys()].filter((i) => labels[i] === c));
+  let groups = [...new Set(labels)].map((c) => [...labels.keys()].filter((i) => labels[i] === c));
+  if (F.mergeSameHue) {
+    // the hue key a family would be named by (sky/ground pair when no single hue dominates)
+    const key = (members: number[]) => {
+      const f = meanVec(members.map((i) => photos[i].features));
+      const h = hueWord(f[1], f[2]);
+      return h !== "Mixed-hue" ? h : `${hueWord(f[3], f[4])}/${hueWord(f[5], f[6])}`;
+    };
+    const merged = new Map<string, number[]>();
+    for (const g of groups) { const k = key(g); merged.set(k, [...(merged.get(k) ?? []), ...g]); }
+    groups = [...merged.values()];
+  }
   groups.sort((a, b) => b.length - a.length);
   const families: Family[] = groups.map((members, fi) => {
     const summary = summarize(members.map((i) => photos[i]), seed);

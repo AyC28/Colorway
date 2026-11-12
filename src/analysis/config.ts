@@ -2,7 +2,7 @@
  * Every tunable threshold in one place. Bump ANALYSIS_VERSION whenever a value
  * changes so stored analyses get recomputed.
  */
-export const ANALYSIS_VERSION = 2;
+export const ANALYSIS_VERSION = 3;
 
 export const CONFIG = {
   /** Long edge for analysis downscale (caller does the resize). */
@@ -47,6 +47,8 @@ export const CONFIG = {
   },
   families: {
     maxK: 8, minPerK: 5, minClusterSize: 3, restarts: 12,
+    /** merge clusters that share a dominant-hue word (Gate 1/2 feedback: fewer, broader families) */
+    mergeSameHue: true,
     /**
      * Feature groups (indices into FEATURE_NAMES). Each group is scaled by one
      * pooled SD, then by its weight. Hue has 3 two-d vectors (6 dims) vs 1

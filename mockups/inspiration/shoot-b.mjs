@@ -1,0 +1,30 @@
+// Direction B, round 2: default fold, analysis open, hover preview, family page (playwright-core + Edge).
+import { chromium } from "playwright-core";
+import { resolve } from "node:path";
+const url = (f) => "file://" + resolve(`mockups/inspiration/terrazzo/${f}`);
+const ready = async (page) => {
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => document.querySelectorAll("img").forEach((i) => (i.loading = "eager")));
+  await page.waitForFunction(() => [...document.images].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 });
+  await page.waitForTimeout(300);
+};
+const b = await chromium.launch({ channel: "msedge" });
+const page = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+await page.goto(url("index.html")); await ready(page);
+await page.screenshot({ path: "mockups/inspiration/png/b2-1-fold.png" });
+await page.screenshot({ path: "mockups/inspiration/png/b2-1-full.png", fullPage: true });
+await page.click("summary"); await page.waitForTimeout(200);
+await page.screenshot({ path: "mockups/inspiration/png/b2-2-analysis-open.png" });
+await page.click("summary");
+await page.locator(".fam-row").nth(1).scrollIntoViewIfNeeded();
+await page.evaluate(() => window.scrollTo(0, document.querySelector(".fams").offsetTop - 24));
+await page.hover('.fam-row[data-preview="f2"]'); await page.waitForTimeout(200);
+await page.screenshot({ path: "mockups/inspiration/png/b2-3-hover-preview.png" });
+await page.goto(url("family-f1.html")); await ready(page);
+await page.screenshot({ path: "mockups/inspiration/png/b2-4-family.png" });
+await page.screenshot({ path: "mockups/inspiration/png/b2-4-family-full.png", fullPage: true });
+await page.setViewportSize({ width: 390, height: 844 });
+await page.goto(url("index.html")); await ready(page);
+await page.screenshot({ path: "mockups/inspiration/png/b2-5-390-full.png", fullPage: true });
+await b.close();
+console.log("done");

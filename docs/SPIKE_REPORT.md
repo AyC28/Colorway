@@ -50,6 +50,10 @@ This machine is faster than a mid-range laptop. The 10–20 s target for 50 phot
 - **Per-photo palette (`photoPalette`):** when at least 30% of the frame is near-neutral, a photo's own palette also shows up to 3 black/grey/white swatches (each covering at least 8% of the pixels). Shares are pixel shares. Set and family palettes stay chromatic only.
 - **Charts:** a Lightroom-style RGB histogram (64 bins per channel, smoothed, blended so overlaps read grey, yellow and cyan) and a compact hue chart filled with the hue spectrum. The new histogram data is `rgbHist`.
 
+## Phase 2 feedback applied (analysis v3)
+- **Fewer families:** after clustering, families that share the same dominant-hue word are merged (`CONFIG.families.mergeSameHue`). The reference set now has 5 families: Golden (12), Blue & dark (8), Teal (7), Olive & bright (5) and Orange sky / blue ground (5). Lowering the k cap instead made the silhouette score pick only 2 families.
+
 ## Caveats
 - Some screenshots include the UI's carousel arrows (for example p32, p33). They're small and neutral, so they're excluded from the palettes, but they add a little to the tone stats.
 - Silhouette kept rising up to the k=7 cap (37 photos ÷ 5). With 50 photos the cap would be 8.
+- Several reference screenshots carry "Unsplash" watermarks, so they're stock photos rather than your own work. They must not go into the public starter set.
