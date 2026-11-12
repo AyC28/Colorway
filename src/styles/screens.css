@@ -273,3 +273,8 @@
 /* Compare and Edit guide: the file action sits level with the title */
 .intro.intro-tool { align-items: flex-start; }
 .intro.intro-tool > .btn { margin-top: var(--space-2xs); }
+/* HSL swatch pair: two equal squares, one-line labels, hex codes level */
+.hsl-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.sw-pair { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.sw-pair .chip-lg { width: 100%; aspect-ratio: 1; box-sizing: border-box; }
+.sw-pair .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

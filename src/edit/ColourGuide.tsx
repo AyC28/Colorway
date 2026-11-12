@@ -35,7 +35,7 @@ export function HslGuide({ mine, theirs, famName }: { mine: HslStat[]; theirs: H
             <div className="hsl-name"><b>{m.name}</b><span className="sub">{m.share > 0.5 ? "most of your colour" : "in your photo"}</span></div>
             <div className="hsl-chips">
               <span className="sw-pair"><span className="chip-lg" style={{ "--sw": you } as CSSProperties} /><span className="sub">Yours</span><HexButton hex={you} /></span>
-              <span className="sw-pair"><span className="chip-lg" style={{ "--sw": fam } as CSSProperties} /><span className="sub">{famName}</span><HexButton hex={fam} /></span>
+              <span className="sw-pair"><span className="chip-lg" style={{ "--sw": fam } as CSSProperties} /><span className="sub" title={famName}>{famName}</span><HexButton hex={fam} /></span>
             </div>
             <div className="hsl-trks">
               <Track label="Hue" stops={[-40, -20, 0, 20, 40].map((d) => oklchToHex(0.7, 0.12, m.hue + d))} you={50} fam={50 + (dh / 40) * 50} text={`${Math.round(m.hue)}° to ${Math.round(t.hue)}°`} />
