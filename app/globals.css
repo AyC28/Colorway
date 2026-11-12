@@ -1,0 +1,9 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Terrazzo (locked direction B, deal 2/3, seed colorway-color-style-studio-b3b6·f25ba431·2026-11-12·r0)
+ * nav: top bar, wordmark, section links, one ink action · signature: families as photo mosaics with a live preview; palette cards with role and share bar · states: loading, empty, error, full per region · terrazzo: neutral grey
+ * axes: light/geometric-sans/warm · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H5 E4 S5 R4 V3 · weakest: V, the app shares one system by design; each route carries its own signature object */
+/* Hallmark · answered: chrome greys neutral (zero chroma) by the brief so the UI cannot bias colour judgement; photos are never filtered */
+@import "../src/styles/tokens.css";
+@import "../src/styles/base.css";
+@import "../src/styles/components.css";
+@import "../src/styles/screens.css";

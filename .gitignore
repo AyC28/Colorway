@@ -20,3 +20,6 @@ mockups/**/.hallmark/
 mockups/assets-raw/
 mockups/png/
 mockups/screens/img/
+.next/
+next-env.d.ts
+*.tsbuildinfo
