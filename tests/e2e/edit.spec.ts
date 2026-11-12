@@ -26,7 +26,8 @@ test("edit guide decodes a CR3 in the browser and fits slider ranges", async ({ 
   await expect(page.getByText("Compressed C-RAW")).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Colour, toward/ })).toBeVisible();
   await page.screenshot({ path: "test-results/edit.png", fullPage: true });
-  await expect(page.getByRole("button", { name: "Open another file" })).toBeVisible();
+  // the "another file" action sits on the title row, like Compare
+  await expect(page.locator(".intro").getByRole("button", { name: "Open another file" })).toBeVisible();
   // a reload keeps the file (saved on this device) and refits
   await page.reload();
   await expect(page.locator(".file")).toHaveText("raw-test-2.CR3");

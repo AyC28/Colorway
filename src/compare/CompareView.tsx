@@ -80,7 +80,7 @@ export function CompareView() {
     <>
       <SiteHeader />
       <main className="container">
-        <div className="intro"><h1>Compare a photo</h1>{g && <AddPhotos onFiles={pick} label={current ? "Compare another photo" : "Choose a photo"} className={current ? "btn btn-secondary" : "btn btn-primary"} disabled={state === "working"} />}</div>
+        <div className="intro intro-tool"><h1>Compare a photo</h1>{g && <AddPhotos onFiles={pick} label={current ? "Compare another photo" : "Choose a photo"} className={current ? "btn btn-secondary" : "btn btn-primary"} disabled={state === "working"} />}</div>
         <p className="status-line" role="status" aria-live="polite">{state === "working" ? "Reading the photo on this device…" : ""}</p>
 
         {(!lib.loaded || !inq.loaded) && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}

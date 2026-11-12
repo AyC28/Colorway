@@ -127,20 +127,21 @@ export function EditView() {
 
   return (
     <>
-      <SiteHeader action={loaded && g ? <AddPhotos accept={ACCEPT} onFiles={open} label="Open another file" className="btn btn-secondary" disabled={busy} /> : undefined} />
+      <SiteHeader />
       <main className="container">
         {mobile && <p className="banner" role="note">RAW files are large and work best on a desktop. On a phone, open a JPG or PNG instead.</p>}
-        <div className="intro">
-          <div><h1>Edit guide</h1>{loaded && <p className="file">{loaded.name}</p>}</div>
-          {loaded?.raw ? (
+        {/* same place as Compare: the title on the left, the one file action on the right */}
+        <div className="intro intro-tool">
+          <div><h1>Edit guide</h1>{loaded && <p className="file">{loaded.name}</p>}{loaded?.raw && (
             <dl className="facts facts-sm"><div><dt>Camera</dt><dd>{loaded.raw.camera}</dd></div><div><dt>ISO</dt><dd className="num">{loaded.raw.iso}</dd></div><div><dt>Shutter</dt><dd className="num">{loaded.raw.shutter < 1 ? `1/${Math.round(1 / loaded.raw.shutter)}` : `${loaded.raw.shutter} s`}</dd></div><div><dt>Aperture</dt><dd className="num">f/{loaded.raw.aperture?.toFixed(1)}</dd></div></dl>
-          ) : g && <AddPhotos accept={ACCEPT} onFiles={open} label="Open a RAW or JPEG" disabled={busy} />}
+          )}</div>
+          {g && <AddPhotos accept={ACCEPT} onFiles={open} label={loaded ? "Open another file" : "Open a RAW or JPEG"} className={loaded ? "btn btn-secondary" : "btn btn-primary"} disabled={busy} />}
         </div>
         <p className="status-line" role="status" aria-live="polite">{state === "decoding" ? "Decoding on this device…" : state === "fitting" ? "Fitting slider ranges…" : ""}</p>
 
         {!lib.loaded && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
         {lib.loaded && !g && <section className="card empty"><h2 className="card-h">Build your reference look first</h2><p className="note">The guide fits slider ranges toward one of your colour families.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>}
-        {g && !loaded && state !== "error" && <section className="card empty"><h2 className="card-h">Open a RAW or JPEG file</h2><p className="note">Canon CR3 works best, on a desktop. It is decoded here; nothing is uploaded. You get slider ranges toward your closest family.</p><AddPhotos accept={ACCEPT} onFiles={open} label="Open a file" disabled={busy} className="btn btn-primary" /></section>}
+        {g && !loaded && state !== "error" && <section className="card empty"><h2 className="card-h">Open a RAW or JPEG file</h2><p className="note">Canon CR3 works best, on a desktop. It is decoded here; nothing is uploaded, and the file is kept here so you can come back to it. You get slider ranges toward your closest family.</p></section>}
         {state === "error" && <section className="card errors" role="alert"><h2 className="card-h">That file could not be guided</h2><p>{error}</p>{g && <AddPhotos accept={ACCEPT} onFiles={open} label="Try another file" className="btn btn-secondary" />}</section>}
 
         {loaded && (

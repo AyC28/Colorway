@@ -19,6 +19,7 @@ test("compare matches a JPEG to a family with directions", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Closest family" })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".sugg tbody tr").first()).toBeVisible();
   await expect(page.locator(".glyph").first()).toBeVisible();
+  await expect(page.locator(".intro").getByRole("button", { name: "Compare another photo" })).toBeVisible();
   await page.screenshot({ path: "test-results/compare.png", fullPage: true });
   // leave and come back: the photo and its result are still there, and listed under previous photos
   await page.getByRole("link", { name: "Inspiration" }).click();

@@ -268,3 +268,8 @@
 .sugg td.move { display: grid; gap: var(--space-xs); justify-items: start; }
 .sugg .glyph-cell { display: block; padding-inline: 14px; }
 .hist-list .link-btn { justify-self: start; }
+.intro .facts-sm { margin-top: var(--space-sm); gap: var(--space-xl); }
+.intro .facts-sm dd { font-size: var(--text-md); }
+/* Compare and Edit guide: the file action sits level with the title */
+.intro.intro-tool { align-items: flex-start; }
+.intro.intro-tool > .btn { margin-top: var(--space-2xs); }
