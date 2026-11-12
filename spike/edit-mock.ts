@@ -61,7 +61,7 @@ const out = {
   camera: `${meta.camera_make} ${meta.camera_model}`, iso: meta.iso_speed, shutter: meta.shutter, aperture: meta.aperture, focal: meta.focal_len,
   craw: meta.canon?.Quality === 7, asShot: { rOverG: meta.color_data.cam_mul[0] / meta.color_data.cam_mul[1], bOverG: meta.color_data.cam_mul[2] / meta.color_data.cam_mul[1] },
   clippedShare: clipped / (W * H), noiseSd, cleanStops,
-  palette: a.palette, photoPalette: a.photoPalette, rgbHist: a.rgbHist, tone: a.tone,
+  palette: a.palette, photoPalette: a.photoPalette, rgbHist: a.rgbHist, tone: a.tone, hsl: a.hsl, grading: a.grading,
   matches, family: { id: target.id, name: target.name },
   fit, suggestions: suggest(a, target),
 };

@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import sharp from "sharp";
 import { esc, pct, hueName, tok, strip, hexButton, histogram, copyScript, dataCss, type Sw } from "../lib";
-import { linearToOklab, SRGB_TO_LINEAR, oklabToHex, rng } from "../../src/analysis/color";
+import { linearToOklab, SRGB_TO_LINEAR, oklabToHex, oklchToHex as oklchToHexS, rng } from "../../src/analysis/color";
 import { kmeansBest } from "../../src/analysis/kmeans";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -98,6 +98,53 @@ ${bar("Compare")}
 </main>${tail}`;
 }
 
+
+// ---------------------------------------------------------------- visual colour guide (Edit guide)
+/** A track with two markers: hollow = yours, filled = family; the lit span is the move. */
+function track(label: string, stops: string[], yours: number, fam: number, yourTxt: string, famTxt: string) {
+  const clamp = (v: number) => Math.min(100, Math.max(0, v));
+  const a = clamp(yours), b = clamp(fam);
+  const g = stops.map((h, i) => `--g${i + 1}:${tok(h)}`).join(";");
+  return `<div class="trk"><span class="trk-l">${label}</span>
+    <span class="trk-bar" style="${g}" role="img" aria-label="${label}: yours ${yourTxt}, family ${famTxt}">
+      <span class="trk-span" style="--a:${Math.min(a, b)}%;--b:${Math.max(a, b)}%"></span>
+      <span class="mk mk-you" style="--x:${a}%"></span><span class="mk mk-fam" style="--x:${b}%"></span></span>
+    <span class="trk-v">${famTxt === yourTxt ? "Keep" : `${yourTxt} to ${famTxt}`}</span></div>`;
+}
+function hslRows(mine: any[], theirs: any[], famName: string) {
+  return mine.map((m, i) => ({ m, t: theirs[i] })).filter(({ m, t }) => m.share > 0.05 && t.share > 0.01 && Number.isFinite(m.hue) && Number.isFinite(t.hue))
+    .map(({ m, t }) => {
+      let dh = t.hue - m.hue; if (dh > 180) dh -= 360; if (dh < -180) dh += 360;
+      const hueStops = [-40, -20, 0, 20, 40].map((d) => oklchToHexS(0.7, 0.12, m.hue + d));
+      const satStops = [0, 0.08, 0.16].map((c) => oklchToHexS(m.l, c, m.hue));
+      const lumStops = [0.2, 0.55, 0.9].map((l) => oklchToHexS(l, m.c, m.hue));
+      const you = oklchToHexS(m.l, m.c, m.hue), fam = oklchToHexS(t.l, t.c, t.hue);
+      const word = (d: number, small: number, pos: string, neg: string) => (Math.abs(d) < small ? "Keep" : d > 0 ? pos : neg);
+      return `<li class="hsl-row"><div class="hsl-name"><b>${m.name}</b><span class="sub">${Math.round(m.share * 100) > 50 ? "most of your colour" : "in your photo"}</span></div>
+        <div class="hsl-chips"><span class="sw-pair"><span class="chip-lg" style="--sw:${tok(you)}"></span><span class="sub">Yours</span>${hexButton(you)}</span>
+          <span class="sw-pair"><span class="chip-lg" style="--sw:${tok(fam)}"></span><span class="sub">${esc(famName)}</span>${hexButton(fam)}</span></div>
+        <div class="hsl-trks">
+          ${track("Hue", hueStops, 50, 50 + (dh / 40) * 50, `${Math.round(m.hue)}°`, `${Math.round(t.hue)}°`)}
+          ${track("Saturation", satStops, (m.c / 0.16) * 100, (t.c / 0.16) * 100, word(t.c - m.c, 0.006, "", "") === "Keep" ? "same" : `${Math.round((m.c / 0.16) * 100)}`, word(t.c - m.c, 0.006, "", "") === "Keep" ? "same" : `${Math.round((t.c / 0.16) * 100)}`)}
+          ${track("Luminance", lumStops, ((m.l - 0.2) / 0.7) * 100, ((t.l - 0.2) / 0.7) * 100, `${Math.round(m.l * 100)}`, `${Math.round(t.l * 100)}`)}
+        </div></li>`;
+    }).join("");
+}
+/** Grading wheel with both tints: hollow ring = yours, filled dot = family, a line for the move. */
+function wheel2(mine: any, fam: any, size = 112) {
+  const r = size / 2, ring = r - 4;
+  const segs = Array.from({ length: 36 }, (_, i) => {
+    const a0 = (i * 10 * Math.PI) / 180, a1 = ((i + 1) * 10 * Math.PI) / 180;
+    const p = (a: number, rr: number) => `${(r + rr * Math.cos(a)).toFixed(2)},${(r - rr * Math.sin(a)).toFixed(2)}`;
+    return `<path d="M${p(a0, ring)} A${ring},${ring} 0 0 0 ${p(a1, ring)} L${p(a1, ring - 7)} A${ring - 7},${ring - 7} 0 0 1 ${p(a0, ring - 7)} Z" style="fill:${tok(oklchToHexS(0.68, 0.11, i * 10 + 5))}"/>`;
+  }).join("");
+  const pos = (g: any) => { const d = Math.min(1, g.sat / 60) * (ring - 12), a = (g.hue * Math.PI) / 180; return [r + d * Math.cos(a), r - d * Math.sin(a)]; };
+  const [x1, y1] = pos(mine), [x2, y2] = pos(fam);
+  return `<svg class="wheel2" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${mine.range}: yours hue ${Math.round(mine.hue)} saturation ${mine.sat}, family hue ${Math.round(fam.hue)} saturation ${fam.sat}">${segs}
+    <circle class="wheel-face" cx="${r}" cy="${r}" r="${ring - 8}"/><line class="w-move" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>
+    <circle class="w-you" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="6"/><circle class="w-fam" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="6" style="--sw:${tok(fam.wheelHex)}"/></svg>`;
+}
+
 // ================================================================ Edit guide
 function sliderTrack(label: string, r: any, min: number, max: number, unit = "", fmt = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v)}`) {
   const pos = (v: number) => ((v - min) / (max - min)) * 100;
@@ -110,7 +157,6 @@ function edit() {
   const ev = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}`;
   const tempWord = r.temp.best > 0 ? "Warmer" : r.temp.best < 0 ? "Cooler" : "Leave";
   const tempBand = Math.abs(r.temp.best) < 0.2 ? "slight" : Math.abs(r.temp.best) < 0.5 ? "moderate" : "strong";
-  const colour = topSuggestions(E.suggestions.filter((s: any) => ["HSL", "Color Grading"].includes(s.group)), 4);
   const clipRisk = E.fit.clippedAfter > 0.005;
   const shutter = E.shutter < 1 ? `1/${Math.round(1 / E.shutter)}` : `${E.shutter}s`;
   return `${head("Edit guide, Colorway", "Slider ranges for a RAW file, fitted toward your closest colour family.")}<body>
@@ -128,7 +174,7 @@ ${bar("Edit guide")}
           <div><dt>Clipped highlights</dt><dd><span class="num">${(E.clippedShare * 100).toFixed(2)}%</span> now, about <span class="num">${Math.round(E.fit.clippedAfter * 100)}%</span> after the exposure below</dd></div>
           <div><dt>Shadow room</dt><dd>About <span class="num">${E.cleanStops.toFixed(1)}</span> stops above the noise floor</dd></div>
           <div><dt>As-shot white balance</dt><dd>Red ×<span class="num">${E.asShot.rOverG.toFixed(2)}</span>, blue ×<span class="num">${E.asShot.bOverG.toFixed(2)}</span> (camera multipliers)</dd></div>
-          <div><dt>Format</dt><dd>${E.craw ? "Compressed C-RAW" : "RAW"}, decoded on this device in <span class="num">${(E.decodeMs / 1000).toFixed(1)}</span> s</dd></div>
+          <div><dt>Format</dt><dd>${E.craw ? "Compressed C-RAW" : "RAW"}, decoded on this device in <span class="num">${(E.decodeMs / 1000).toFixed(1)}</span>&nbsp;s</dd></div>
         </dl>
       </div>
     </section>
@@ -143,10 +189,17 @@ ${bar("Edit guide")}
         <li class="slider"><span class="s-name">Temp</span><span class="s-dir">${tempWord}</span><span class="s-val">${meter(tempBand)}</span></li>
       </ul>
       ${clipRisk ? `<p class="risk"><b>Clipping risk.</b> The suggested exposure pushes about ${Math.round(E.fit.clippedAfter * 100)}% of pixels to pure white. Pull Highlights down first if the sky matters.</p>` : ""}
-      <h3>Color, by direction</h3>
-      <ul class="dirs">${colour.map((s: any) => `<li><span class="d-ctl">${esc(s.control)}</span><span class="d-move">${moveWord(s)}</span>${meter(s.band)}</li>`).join("")}</ul>
     </section>
   </div>
+  <section class="colour" aria-labelledby="col-h">
+    <div class="sec-head"><h2 id="col-h">Colour, toward ${esc(f.name)}</h2><p class="note">The ring is your photo now, the dot is the family. Move each slider in Lightroom’s HSL panel the same way.</p></div>
+    <div class="colour-grid">
+      <div class="card"><div class="h-row"><h3 class="card-h">HSL by colour</h3>${est}</div><ol class="hsl-list">${hslRows(E.hsl, f.summary.hsl, f.name)}</ol></div>
+      <div class="card"><div class="h-row"><h3 class="card-h">Color grading</h3>${est}</div>
+        <div class="wheels2">${E.grading.map((g: any, i: number) => { const t = f.summary.grading[i]; return `<figure>${wheel2(g, t)}<figcaption><b>${g.range}</b><span class="sub">${hueName(g.hue)} to ${hueName(t.hue)}, ${t.sat > g.sat + 5 ? "stronger" : t.sat < g.sat - 5 ? "softer" : "same strength"}</span></figcaption></figure>`; }).join("")}</div>
+        <p class="legend-key"><span class="key-you"></span>Your photo <span class="key-fam"></span>${esc(f.name)}</p></div>
+    </div>
+  </section>
 </main>${tail}`;
 }
 
@@ -181,7 +234,7 @@ function grid() {
   const v = (p: any) => [p.tone.meanL, p.tone.meanA, p.tone.meanB];
   const jumps = order.slice(0, 18).map((p, i, a) => (i % 3 === 2 || !a[i + 1] ? null : { i, d: Math.hypot(...v(p).map((x, k) => x - v(a[i + 1])[k])) * 100 }))
     .filter(Boolean).sort((x: any, y: any) => y.d - x.d).slice(0, 3) as any[];
-  return `${head("Grid, Colorway", "Preview your profile grid with 3:4 tiles, in light and dark, on iPhone and iPad.", ' data-theme="light"')}<body>
+  return `${head("Grid, Colorway", "Preview your profile grid with 3:4 tiles, in light and dark, on a phone.", ' data-theme="light"')}<body>
 ${bar("Grid")}
 <main class="container">
   <div class="intro"><h1>Grid preview</h1><p class="note">3:4 tiles, centre-cropped from each photo. Drag a tile to reorder.</p></div>
@@ -190,7 +243,7 @@ ${bar("Grid")}
     <fieldset class="seg"><legend>Order</legend><button type="button" class="seg-b" aria-pressed="false">As added</button><button type="button" class="seg-b" aria-pressed="false">By family</button><button type="button" class="seg-b" aria-pressed="true">Smooth colour flow</button></fieldset>
     <label class="check"><input type="checkbox" checked> Show colour flow</label>
   </div>
-  <div class="devices">${device("phone", order)}${device("tablet", order)}
+  <div class="devices">${device("phone", order)}
     <aside class="card flow-card" aria-labelledby="fl-h"><h2 id="fl-h" class="card-h">Colour flow</h2>
       <p class="note">The strip under each tile is its main colour. Biggest jumps between neighbours:</p>
       <ol class="jumps">${jumps.map((j) => `<li><span class="pair">${img(order[j.i], "j-img")}${img(order[j.i + 1], "j-img")}</span><span>Row <b class="num">${Math.floor(j.i / 3) + 1}</b>, tiles <b class="num">${(j.i % 3) + 1}</b> and <b class="num">${(j.i % 3) + 2}</b></span><span class="sub num">ΔE ${Math.round(j.d)}</span></li>`).join("")}</ol>
