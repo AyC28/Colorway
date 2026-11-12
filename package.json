@@ -1,0 +1,23 @@
+{
+  "name": "colorway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "tsx spike/run.ts",
+    "spike:raw": "tsx spike/raw-node.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "culori": "4.0.2",
+    "libraw-wasm": "1.6.0"
+  },
+  "devDependencies": {
+    "@types/culori": "4.0.1",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "sharp": "0.35.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3"
+  }
+}

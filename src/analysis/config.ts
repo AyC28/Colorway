@@ -1,0 +1,69 @@
+/**
+ * Every tunable threshold in one place. Bump ANALYSIS_VERSION whenever a value
+ * changes so stored analyses get recomputed.
+ */
+export const ANALYSIS_VERSION = 1;
+
+export const CONFIG = {
+  /** Long edge for analysis downscale (caller does the resize). */
+  analysisLongEdge: 256,
+  /** OKLCH chroma above which a pixel counts as chromatic. */
+  chromaThreshold: 0.04,
+  /** Palette k-means. */
+  paletteK: 7,
+  /** Merge palette centroids closer than this in OKLab (ΔEok). */
+  paletteMergeDist: 0.06,
+  /** Drop palette entries below this share after merging. */
+  paletteMinShare: 0.03,
+  /** Chromatic pixels kept per photo for set/family pooling. */
+  samplePerPhoto: 2500,
+  toneBins: 64,
+  hueBins: 36,
+  /** Soft tonal ranges in OKLab L for grading: shadows fade out over [s0,s1], highlights fade in over [h0,h1]. */
+  grading: { s0: 0.3, s1: 0.5, h0: 0.65, h1: 0.85, satFull: 0.1, repL: [0.35, 0.6, 0.85] },
+  glow: {
+    /** bright region = Y ≥ max(minY, quantile(Y, q)) */
+    minY: 0.5,
+    q: 0.98,
+    /** need at least this share of pixels in the bright mask */
+    minMaskShare: 0.001,
+    /** distance bands (px at 256-px analysis size) outside the bright edge */
+    near: [2, 3] as [number, number],
+    far: [11, 16] as [number, number],
+    /** spill → score: first value maps to 0, second to 100 */
+    spillRange: [0.2, 0.7] as [number, number],
+    labels: [
+      [25, "rarely"],
+      [55, "sometimes"],
+      [101, "often"],
+    ] as [number, string][],
+  },
+  families: { maxK: 8, minPerK: 5, minClusterSize: 3, restarts: 12 },
+  compare: {
+    /** weight of palette distance relative to standardized feature distance */
+    paletteWeight: 0.5,
+  },
+} as const;
+
+/**
+ * Lightroom's eight HSL colours, mapped to OKLCH hue ranges (degrees).
+ * Approximate: Lightroom's own hue boundaries are not published.
+ */
+export const HSL_BUCKETS = [
+  { name: "Red", from: 349, to: 42 },
+  { name: "Orange", from: 42, to: 82 },
+  { name: "Yellow", from: 82, to: 126 },
+  { name: "Green", from: 126, to: 168 },
+  { name: "Aqua", from: 168, to: 230 },
+  { name: "Blue", from: 230, to: 277 },
+  { name: "Purple", from: 277, to: 309 },
+  { name: "Magenta", from: 309, to: 349 },
+] as const;
+
+export function hslBucket(h: number): number {
+  for (let i = 0; i < HSL_BUCKETS.length; i++) {
+    const { from, to } = HSL_BUCKETS[i];
+    if (from < to ? h >= from && h < to : h >= from || h < to) return i;
+  }
+  return 0;
+}

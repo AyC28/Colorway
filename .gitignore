@@ -13,3 +13,4 @@ test-results/
 spike/out/
 # Personal/reference photos stay local (originals never leave the device)
 reference/
+spike/browser/dist/
