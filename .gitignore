@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.env*
+!.env.example
+.DS_Store
+*.log
+.vercel/
+playwright-report/
+test-results/
+spike/out/
+# Personal photos stay local (originals never leave the device)
+test-photos/**
+!test-photos/**/
+!test-photos/**/.gitkeep
