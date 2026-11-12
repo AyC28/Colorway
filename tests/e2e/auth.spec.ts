@@ -9,7 +9,7 @@ test("sign-in page offers Google and an email link, and explains what syncs", as
   await expect(page.getByRole("button", { name: "Email me a link" })).toBeDisabled();
   await page.getByLabel("Email").fill("someone@example.com");
   await expect(page.getByRole("button", { name: "Email me a link" })).toBeEnabled();
-  await expect(page.getByText("Your original photos never leave this device.")).toBeVisible();
+  await expect(page.getByText("Originals stay on this device.", { exact: false })).toBeVisible();
   await page.goto("/account");
   await expect(page.getByRole("heading", { name: "Not signed in" })).toBeVisible();
   await page.screenshot({ path: "test-results/login.png" });

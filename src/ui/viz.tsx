@@ -29,7 +29,7 @@ function roles(p: Swatch[]) {
   return p.map((s) => { const r = cum < 0.5 ? "Main" : cum < 0.85 ? "Supporting" : "Accent"; cum += s.share; return r; });
 }
 export function PaletteCards({ p }: { p: Swatch[] }) {
-  if (!p.length) return <p className="note">These photos have no colourful pixels: they are all greys.</p>;
+  if (!p.length) return <p className="note">All greys: no colourful pixels.</p>;
   const max = Math.max(...p.map((s) => s.share));
   const rs = roles(p);
   return (
@@ -130,7 +130,7 @@ export function FullAnalysis({ s, idBase }: { s: GroupSummary; idBase: string })
         <div className="h-row"><h3>Color grading</h3><Estimated /></div>
         <div className="wheels">{s.grading.map((g) => <figure key={g.range}><Wheel g={g} /><figcaption>{g.range}<span className="num">{Math.round(g.hue)}°, {g.sat}</span><HexButton hex={g.hex} /></figcaption></figure>)}</div>
         <div className="h-row"><h3>Glow</h3><Estimated /></div>
-        {s.glow.score === null ? <p className="note">No bright highlights to measure.</p> : (<>
+        {s.glow.score === null ? <p className="note">No highlights to measure.</p> : (<>
           <p className="glow"><span className="figure num">{s.glow.score}</span> of 100, {s.glow.label}</p>
           {s.glow.hex && <p className="glow-tint"><span className="chip" style={sw(s.glow.hex)} />Halo tint <HexButton hex={s.glow.hex} /></p>}
         </>)}

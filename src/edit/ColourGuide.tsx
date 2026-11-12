@@ -24,7 +24,7 @@ function Track({ label, stops, you, fam, text }: { label: string; stops: string[
 
 export function HslGuide({ mine, theirs, famName }: { mine: HslStat[]; theirs: HslStat[]; famName: string }) {
   const rows = mine.map((m, i) => ({ m, t: theirs[i] })).filter(({ m, t }) => m.share > 0.05 && t.share > 0.01 && Number.isFinite(m.hue) && Number.isFinite(t.hue));
-  if (!rows.length) return <p className="note">No colour in this photo is strong enough to compare by HSL.</p>;
+  if (!rows.length) return <p className="note">No colour strong enough to compare.</p>;
   return (
     <ol className="hsl-list">
       {rows.map(({ m, t }) => {

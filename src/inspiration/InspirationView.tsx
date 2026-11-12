@@ -71,7 +71,7 @@ export function InspirationView() {
             <h2 id="empty-h" className="card-h">Start with photos you love</h2>
             <p className="note">Add up to {MAX_PHOTOS} reference photos, or drop them anywhere on this page. They are analysed on this device and the originals never leave it.</p>
             <div className="actions">{add}<button type="button" className="btn btn-secondary" onClick={starter} disabled={busy}>Try the starter set</button></div>
-            <p className="note">The starter set is a selection of photos by the photographer who made Colorway.</p>
+            <p className="note">Starter set: photos by Colorway’s photographer.</p>
           </section>
         )}
 
@@ -84,13 +84,13 @@ export function InspirationView() {
 
         {g && (<>
           <section className="look" aria-labelledby="pal-h">
-            <div className="sec-head"><h2 id="pal-h">The palette</h2><p className="note">Colourful pixels only, largest first. Greys are counted separately.</p></div>
+            <div className="sec-head"><h2 id="pal-h">The palette</h2><p className="note">Colourful pixels, largest first.</p></div>
             <PaletteCards p={g.set.palette} />
             <details className="more"><summary className="btn btn-secondary">Show full analysis</summary><FullAnalysis s={g.set} idBase="set" /></details>
           </section>
 
           <section className="fams" aria-labelledby="fam-h">
-            <div className="sec-head"><h2 id="fam-h">Families</h2><p className="note">Grouped by hue and brightness. Hover to preview, open one for the full breakdown. Drag a photo onto a family to move it.</p></div>
+            <div className="sec-head"><h2 id="fam-h">Families</h2><p className="note">Grouped by hue and brightness.</p></div>
             <div className="fam-grid">
               <ol className="fam-list">
                 {fams.map((f) => (
@@ -128,7 +128,7 @@ export function InspirationView() {
 
         {lib.photos.some((p) => p.status !== "error") && (
           <section aria-labelledby="every-h">
-            <div className="sec-head"><h2 id="every-h">Every photo</h2><p className="note">Each photo’s own palette includes its greys when they fill a large part of the frame.</p></div>
+            <div className="sec-head"><h2 id="every-h">Every photo</h2><p className="note">Greys included where they dominate.</p></div>
             <ul className="ph-grid">
               {lib.photos.filter((p) => p.status !== "error").map((p) => {
                 const a = lib.analyses.get(p.id);

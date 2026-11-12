@@ -33,19 +33,19 @@ export function AccountView() {
       <main className="container">
         <div className="intro"><h1>Your account</h1></div>
         {!s.ready ? <div className="skeleton" aria-hidden="true"><div className="sk-row" /></div> : !s.user ? (
-          <section className="card empty"><h2 className="card-h">Not signed in</h2><p className="note">Your work is saved on this device. Sign in to sync it to your other devices.</p><Link className="btn btn-primary" href="/login">Sign in</Link></section>
+          <section className="card empty"><h2 className="card-h">Not signed in</h2><p className="note">Saved on this device. Sign in to sync.</p><Link className="btn btn-primary" href="/login">Sign in</Link></section>
         ) : (
           <section className="card account" aria-labelledby="acc-h">
             <h2 id="acc-h" className="card-h">{s.user.email}</h2>
             <dl className="ro-list">
               <div><dt>Sync</dt><dd role="status">{s.state === "syncing" ? "Syncing…" : s.state === "offline" ? "Offline: changes wait on this device" : s.state === "error" ? `Failed: ${s.error}` : s.lastSyncedAt ? `Up to date, last synced ${new Date(s.lastSyncedAt).toLocaleTimeString()}` : "Waiting for the first sync"}</dd></div>
               <div><dt>On this device</dt><dd><span className="num">{lib.photos.length}</span> photos, <span className="num">{pending}</span> waiting to sync</dd></div>
-              <div><dt>What syncs</dt><dd>Palettes, families and their names, grid order, and 400-pixel thumbnails with no camera or location data. Original photos stay on the device you added them on.</dd></div>
+              <div><dt>What syncs</dt><dd>Palettes, families, grid order and small thumbnails, no camera or location data. Originals stay on their device.</dd></div>
             </dl>
             <div className="actions"><button type="button" className="btn btn-primary" onClick={sync} disabled={s.state === "syncing"}>Sync now</button><button type="button" className="btn btn-secondary" onClick={signOut}>Sign out</button></div>
             <div className="wipe">
               {!confirmWipe ? <button type="button" className="link-btn" onClick={() => setConfirmWipe(true)}>Sign out and remove this device’s data</button> : (<>
-                <p role="alert">This deletes every photo, original and setting stored in this browser. Anything not yet synced is lost. Your account keeps what has synced.</p>
+                <p role="alert">Deletes everything stored in this browser. Unsynced work is lost.</p>
                 <div className="actions"><button type="button" className="btn btn-primary" onClick={signOutAndWipe}>Remove this device’s data</button><button type="button" className="btn btn-secondary" onClick={() => setConfirmWipe(false)}>Keep it</button></div>
               </>)}
             </div>

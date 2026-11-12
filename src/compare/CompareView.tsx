@@ -58,7 +58,7 @@ export function CompareView() {
   const pick = async (files: File[]) => {
     const f = files[0];
     if (!f || !g) return;
-    if (!/image\/(jpeg|png)/.test(f.type)) { setState("error"); setError("Compare takes one JPEG or PNG. RAW files go to the Edit guide."); return; }
+    if (!/image\/(jpeg|png)/.test(f.type)) { setState("error"); setError("Use a JPEG or PNG. RAW goes to the Edit guide."); return; }
     setState("working");
     try {
       const [{ analysis: a }, t] = await Promise.all([getEngine().analyze(f, 1), makeThumb(f)]);
@@ -85,10 +85,10 @@ export function CompareView() {
 
         {(!lib.loaded || !inq.loaded) && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
         {lib.loaded && !g && (
-          <section className="card empty"><h2 className="card-h">Build your reference look first</h2><p className="note">Compare matches a photo against your colour families, so it needs a few reference photos.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>
+          <section className="card empty"><h2 className="card-h">Build your reference look first</h2><p className="note">Compare needs your colour families.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>
         )}
         {g && inq.loaded && !current && state !== "error" && (
-          <section className="card empty"><h2 className="card-h">Pick one JPEG or PNG</h2><p className="note">It is matched to your closest family, with the direction to move each slider. Nothing is uploaded, and the photo is kept here so you can come back to it.</p></section>
+          <section className="card empty"><h2 className="card-h">Pick one JPEG or PNG</h2><p className="note">Matched to your closest family. Nothing is uploaded.</p></section>
         )}
         {state === "error" && <section className="card errors" role="alert"><h2 className="card-h">That photo could not be compared</h2><p>{error}</p></section>}
 
@@ -104,8 +104,8 @@ export function CompareView() {
                 <h2 id="near-h" className="card-h">Closest family</h2>
                 <p className="near-name">{name(fam.id, fam.name)}</p>
                 <ul className="sel-photos">{(g!.members[fam.id] ?? []).slice(0, 4).map((id) => <li key={id}><img className="sel-img" src={thumb(id)} alt="" /></li>)}</ul>
-                {alsoClose && <p className="also">Also close to <b>{name(res.matches[1].id, res.matches[1].name)}</b>, almost as good a match.</p>}
-                <h3>How close each family is</h3>
+                {alsoClose && <p className="also">Also close to <b>{name(res.matches[1].id, res.matches[1].name)}</b>, nearly as good.</p>}
+                <h3>Family match</h3>
                 <ol className="matches">{bars.map((m, i) => <li key={m.id} className={i === 0 ? "is-best" : undefined}><span className="m-name">{name(m.id, m.name)}</span><span className="m-bar"><span style={{ "--w": `${m.width}%` } as CSSProperties} /></span></li>)}</ol>
               </aside>
             )}
@@ -114,7 +114,7 @@ export function CompareView() {
 
         {res && fam && analysis && (<>
           <section aria-labelledby="col-h">
-            <div className="sec-head"><h2 id="col-h">Your colours beside the family’s</h2><p className="note">Each of the photo’s main colours, paired with the nearest family colour.</p></div>
+            <div className="sec-head"><h2 id="col-h">Colour match</h2><p className="note">Your colours vs the family’s.</p></div>
             <table className="pairs">
               <thead><tr><th scope="col">This photo</th><th scope="col">{name(fam.id, fam.name)}</th><th scope="col">Difference</th></tr></thead>
               <tbody>{colourPairs(analysis.palette, fam.summary.palette).map((p, i) => (
@@ -127,8 +127,8 @@ export function CompareView() {
             </table>
           </section>
           <section aria-labelledby="sug-h">
-            <div className="sec-head"><h2 id="sug-h">Suggested moves</h2><p className="note">Directions, not exact values. The bar shows which way and how far, on what the slider changes.{isJpeg ? " JPEGs have limited headroom: big moves may band or clip." : ""}</p></div>
-            {top.length ? <SuggTable rows={top} /> : <p className="note">This photo already sits close to the family: no move stands out.</p>}
+            <div className="sec-head"><h2 id="sug-h">Suggested moves</h2><p className="note">Directions, not exact values.{isJpeg ? " JPEG: big moves may band or clip." : ""}</p></div>
+            {top.length ? <SuggTable rows={top} /> : <p className="note">Already close to the family.</p>}
             {rest.length > 0 && <details className="more"><summary className="btn btn-secondary">Show all {res.suggestions.length} suggestions</summary><SuggTable rows={rest} /></details>}
           </section>
         </>)}

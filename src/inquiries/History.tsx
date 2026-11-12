@@ -7,7 +7,7 @@ export function History({ rows, current, onOpen, label }: { rows: InquiryRow[]; 
   if (!rows.length) return null;
   return (
     <section className="history" aria-labelledby="hist-h">
-      <div className="sec-head"><h2 id="hist-h">{label}</h2><p className="note">Kept on this device. Results follow your current families.</p></div>
+      <div className="sec-head"><h2 id="hist-h">{label}</h2><p className="note">Saved on this device.</p></div>
       <ul className="hist-list">
         {rows.map((r) => (
           <li key={r.id} className={r.id === current ? "is-current" : undefined}>

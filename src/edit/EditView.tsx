@@ -129,7 +129,7 @@ export function EditView() {
     <>
       <SiteHeader />
       <main className="container">
-        {mobile && <p className="banner" role="note">RAW files are large and work best on a desktop. On a phone, open a JPG or PNG instead.</p>}
+        {mobile && <p className="banner" role="note">On a phone, use JPG or PNG. RAW works best on a desktop.</p>}
         {/* same place as Compare: the title on the left, the one file action on the right */}
         <div className="intro intro-tool">
           <div><h1>Edit guide</h1>{loaded && <p className="file">{loaded.name}</p>}{loaded?.raw && (
@@ -140,8 +140,8 @@ export function EditView() {
         <p className="status-line" role="status" aria-live="polite">{state === "decoding" ? "Decoding on this device…" : state === "fitting" ? "Fitting slider ranges…" : ""}</p>
 
         {!lib.loaded && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
-        {lib.loaded && !g && <section className="card empty"><h2 className="card-h">Build your reference look first</h2><p className="note">The guide fits slider ranges toward one of your colour families.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>}
-        {g && !loaded && state !== "error" && <section className="card empty"><h2 className="card-h">Open a RAW or JPEG file</h2><p className="note">Canon CR3 works best, on a desktop. It is decoded here; nothing is uploaded, and the file is kept here so you can come back to it. You get slider ranges toward your closest family.</p></section>}
+        {lib.loaded && !g && <section className="card empty"><h2 className="card-h">Build your reference look first</h2><p className="note">The guide needs your colour families.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>}
+        {g && !loaded && state !== "error" && <section className="card empty"><h2 className="card-h">Open a RAW or JPEG file</h2><p className="note">Canon CR3 works best, on a desktop. Nothing is uploaded.</p></section>}
         {state === "error" && <section className="card errors" role="alert"><h2 className="card-h">That file could not be guided</h2><p>{error}</p>{g && <AddPhotos accept={ACCEPT} onFiles={open} label="Try another file" className="btn btn-secondary" />}</section>}
 
         {loaded && (
@@ -149,7 +149,7 @@ export function EditView() {
             <section className="ed-left" aria-label="The file">
               <figure className="cmp-photo">
                 <img src={loaded.previewUrl} alt={loaded.raw ? "Neutral render of the RAW file" : "The photo"} />
-                <figcaption>{loaded.raw ? "Our neutral render: camera white balance, no tone curve. Expect it flatter than your camera’s JPEG." : "JPEGs have limited headroom: big moves may band or clip."}</figcaption>
+                <figcaption>{loaded.raw ? "Neutral render: flatter than your camera’s JPEG." : "JPEG: big moves may band or clip."}</figcaption>
               </figure>
               <div className="readouts">
                 <div className="ro"><h2 className="ro-h">Histogram</h2><Histogram rgb={loaded.analysis.rgbHist} height={84} /></div>
@@ -168,7 +168,7 @@ export function EditView() {
                   {loaded.matches.map((m, i) => <option key={m.id} value={m.id}>{name(m.id, m.name)}{i === 0 ? " (closest)" : ""}</option>)}
                 </select>
               </label>
-              <p className="note">Fitted with our own simple edit model, so these are starting ranges, not Lightroom’s exact numbers.</p>
+              <p className="note">Starting ranges from our model, not Lightroom’s exact numbers.</p>
               {!fitNow ? <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-row" /></div> : (<>
                 <ul className="sliders">
                   <Slider label="Exposure" r={fitNow.ranges.exposure} min={-2} max={2} unit=" EV" fmt={ev} />
@@ -179,8 +179,8 @@ export function EditView() {
                     {fitNow.ranges.temp.best !== 0 && <MoveGlyph s={{ group: "Color", control: "Temp", sign: fitNow.ranges.temp.best > 0 ? "+" : "−", band: tempBand, why: "", delta: 0 }} />}
                     {fitNow.ranges.temp.best !== 0 && <span className="s-val"><span className="meter" role="img" aria-label={tempBand}>{[1, 2, 3].map((i) => <span key={i} className={i <= BAND_STEPS[tempBand] ? "on" : undefined} />)}</span><span className="band">{tempBand}</span></span>}</li>
                 </ul>
-                {fitNow.clippedAfter > 0.005 && <p className="risk"><b>Clipping risk.</b> The suggested exposure pushes about {Math.round(fitNow.clippedAfter * 100)}% of pixels to pure white. Pull Highlights down first if the sky matters.</p>}
-                {sugg.length === 0 && <p className="note">This file already sits close to the family.</p>}
+                {fitNow.clippedAfter > 0.005 && <p className="risk"><b>Clipping risk.</b> This exposure clips about {Math.round(fitNow.clippedAfter * 100)}% to white. Lower Highlights first.</p>}
+                {sugg.length === 0 && <p className="note">Already close to the family.</p>}
               </>)}
             </section>
           </div>
@@ -188,7 +188,7 @@ export function EditView() {
 
         {loaded && fam && (
           <section className="colour" aria-labelledby="col-h">
-            <div className="sec-head"><h2 id="col-h">Colour, toward {name(fam.id, fam.name)}</h2><p className="note">The ring is your photo now, the dot is the family. Move each slider in Lightroom’s HSL panel the same way.</p></div>
+            <div className="sec-head"><h2 id="col-h">Colour, toward {name(fam.id, fam.name)}</h2><p className="note">Ring: your photo. Dot: the family.</p></div>
             <div className="colour-grid">
               <div className="card"><div className="h-row"><h3 className="card-h">HSL by colour</h3><Estimated /></div><HslGuide mine={loaded.analysis.hsl} theirs={fam.summary.hsl} famName={name(fam.id, fam.name)} /></div>
               <div className="card"><div className="h-row"><h3 className="card-h">Color grading</h3></div><GradingGuide mine={loaded.analysis.grading} theirs={fam.summary.grading} famName={name(fam.id, fam.name)} /></div>

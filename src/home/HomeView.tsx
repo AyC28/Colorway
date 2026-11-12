@@ -6,13 +6,13 @@ import type { AxisLabel, CloudView } from "./cloud3d";
 const AXIS_TEXT: Record<AxisLabel["id"], string> = { light: "Light", dark: "Dark", red: "Red", green: "Green", yellow: "Yellow", blue: "Blue" };
 
 const STEPS = [
-  { h: "One of your photos", p: "Shrunk to 96 by 64 pixels and read in your browser. Nothing is uploaded." },
-  { h: "Every pixel, placed by colour", p: "Dark to light runs up the middle. Around it, green faces red and blue faces yellow, so hue is the direction a pixel leans and the more colourful it is, the further out it sits." },
-  { h: "Grouped into a palette", p: "Similar pixels pull together. Each group becomes one colour in the photo’s palette, with a hex code to copy." },
-  { h: "Turn it around", p: "Drag the cloud, or focus it and use the arrow keys, to see the colour from every side." },
+  { h: "One of your photos", p: "Read in your browser. Nothing is uploaded." },
+  { h: "Every pixel, placed by colour", p: "Up: lighter. Around: hue. Outward: more colourful." },
+  { h: "Grouped into a palette", p: "Similar pixels group into a palette." },
+  { h: "Turn it around", p: "Drag it, or use the arrow keys." },
 ];
 /** The static story has nothing to drag, so its last step says what the 3D view would show. */
-const STATIC_LAST = "On a desktop with motion on, this cloud turns in 3D so you can see the colour from every side.";
+const STATIC_LAST = "On a desktop, this turns in 3D.";
 const FALLBACK = ["/home/sample.webp", "/home/cloud.webp", "/home/cloud-grouped.webp", "/home/cloud-grouped.webp"];
 
 /** 3D only where it helps: motion allowed, a wide screen, a capable device and WebGL. */
@@ -82,7 +82,7 @@ export function HomeView() {
           <figure className="hero-photo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/home/sample.webp" width={1400} height={933} alt="A red-brick Victorian building with a clock tower behind summer trees, under a clear blue sky" fetchPriority="high" />
-            <figcaption>Scroll to take this photo apart.</figcaption>
+            <figcaption>Scroll to take it apart.</figcaption>
           </figure>
         </section>
 
@@ -112,13 +112,13 @@ export function HomeView() {
         <section className="summary container" aria-labelledby="sum-h">
           <h2 id="sum-h">What Colorway does with your photos</h2>
           <ol className="sum-list">
-            <li><h3>Finds your palette</h3><p>Up to 50 reference photos become one palette, plus sky and ground colours, tone and hue charts.</p></li>
-            <li><h3>Sorts them into families</h3><p>Sunsets, blue hours, misty greens: grouped by hue and brightness, and yours to rename.</p></li>
-            <li><h3>Compares a new photo</h3><p>Matched to its closest family, with the way to move each Lightroom slider.</p></li>
-            <li><h3>Guides a RAW edit</h3><p>Slider ranges for a Canon CR3, fitted toward the family you pick, labelled as estimates.</p></li>
-            <li><h3>Previews your grid</h3><p>3:4 tiles on a phone, light or dark, ordered for a smooth flow of colour.</p></li>
+            <li><h3>Finds your palette</h3><p>Up to 50 photos become one palette.</p></li>
+            <li><h3>Sorts them into families</h3><p>Grouped by hue and brightness.</p></li>
+            <li><h3>Compares a new photo</h3><p>Which way to move each slider.</p></li>
+            <li><h3>Guides a RAW edit</h3><p>Estimated slider ranges for a CR3.</p></li>
+            <li><h3>Previews your grid</h3><p>See your next posts in 3:4.</p></li>
           </ol>
-          <p className="privacy">Everything is measured on your device. Accounts only sync palettes and small thumbnails.</p>
+          <p className="privacy">Measured on your device. Originals never leave it.</p>
           <Link className="btn btn-primary btn-lg" href="/inspiration">Open the studio</Link>
         </section>
       </main>

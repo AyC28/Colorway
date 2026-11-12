@@ -61,14 +61,14 @@ export function GridView() {
     <>
       <SiteHeader />
       <main className="container" data-theme={grid.theme}>
-        <div className="intro"><h1>Grid preview</h1><p className="note">Your photos from Compare and the Edit guide as 3:4 tiles, centre-cropped. Drag a tile, or focus it and press Alt with an arrow key, to reorder.</p></div>
+        <div className="intro"><h1>Grid preview</h1><p className="note">Your Compare and Edit guide photos, 3:4. Drag or Alt + arrows to reorder.</p></div>
         <p className="vh" role="status" aria-live="polite">{say}</p>
 
         {!inq.loaded && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
         {inq.loaded && !all.length && (
-          <section className="card empty"><h2 className="card-h">Nothing to lay out yet</h2><p className="note">Photos you open in Compare or the Edit guide appear here, so you can see how they sit together on your profile.</p><div className="actions"><Link className="btn btn-primary" href="/compare">Compare a photo</Link><a className="btn btn-secondary" href="/edit">Open the Edit guide</a></div></section>
+          <section className="card empty"><h2 className="card-h">Nothing to lay out yet</h2><p className="note">Photos from Compare and the Edit guide appear here.</p><div className="actions"><Link className="btn btn-primary" href="/compare">Compare a photo</Link><a className="btn btn-secondary" href="/edit">Open the Edit guide</a></div></section>
         )}
-        {inq.loaded && all.length > 0 && !done.length && <p className="note">Every photo is switched off below. Tick some to see them in the grid.</p>}
+        {inq.loaded && all.length > 0 && !done.length && <p className="note">All photos are off. Tick some below.</p>}
 
         {all.length > 0 && (<>
           <div className="grid-tools">
@@ -116,7 +116,7 @@ export function GridView() {
             {grid.showFlow && jumps.length > 0 && (
               <aside className="card flow-card" aria-labelledby="fl-h">
                 <h2 id="fl-h" className="card-h">Colour flow</h2>
-                <p className="note">The strip under each tile is its main colour. Biggest jumps between neighbours:</p>
+                <p className="note">Biggest jumps between neighbours:</p>
                 <ol className="jumps">{jumps.map((j) => (
                   <li key={j.index}><span className="pair"><img className="j-img" src={thumb(j.a)} alt="" /><img className="j-img" src={thumb(j.b)} alt="" /></span>
                     <span>Row <b className="num">{Math.floor(j.index / 3) + 1}</b>, tiles <b className="num">{(j.index % 3) + 1}</b> and <b className="num">{(j.index % 3) + 2}</b></span><span className="sub num">ΔE {j.deltaE}</span></li>
@@ -128,7 +128,7 @@ export function GridView() {
 
         {all.length > 0 && (
           <section className="in-grid" aria-labelledby="ig-h">
-            <div className="sec-head"><h2 id="ig-h">Photos in the grid</h2><p className="note">From Compare and the Edit guide, newest first.</p></div>
+            <div className="sec-head"><h2 id="ig-h">Photos in the grid</h2><p className="note">Newest first.</p></div>
             <ul className="hist-list">
               {all.map((r) => (
                 <li key={r.id}>

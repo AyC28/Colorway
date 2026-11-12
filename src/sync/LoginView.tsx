@@ -35,11 +35,11 @@ export function LoginView() {
         {user ? (
           <section className="card empty"><h2 className="card-h">You are signed in</h2><p className="note">As {user.email}.</p><Link className="btn btn-primary" href="/account">Go to your account</Link></section>
         ) : !configured ? (
-          <section className="card empty"><h2 className="card-h">Accounts are not set up here</h2><p className="note">Everything still works on this device; it just will not sync.</p></section>
+          <section className="card empty"><h2 className="card-h">Accounts are not set up here</h2><p className="note">Works on this device, without sync.</p></section>
         ) : (
           <section className="card auth-card" aria-labelledby="auth-h">
             <h2 id="auth-h" className="card-h">Sync your look across devices</h2>
-            <p className="note">Only palettes, families, grid order and small thumbnails are synced. Your original photos never leave this device.</p>
+            <p className="note">Syncs palettes, families and small thumbnails. Originals stay on this device.</p>
             <button type="button" className="btn btn-secondary btn-lg" onClick={google}>Continue with Google</button>
             <p className="or">or get a sign-in link by email</p>
             <form onSubmit={sendLink} className="auth-form" noValidate>
