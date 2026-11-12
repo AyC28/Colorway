@@ -11,7 +11,5 @@ coverage/
 playwright-report/
 test-results/
 spike/out/
-# Personal photos stay local (originals never leave the device)
-test-photos/**
-!test-photos/**/
-!test-photos/**/.gitkeep
+# Personal/reference photos stay local (originals never leave the device)
+reference/

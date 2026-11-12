@@ -8,7 +8,7 @@ Status: proposal for Gate 0. Nothing here is app code. Versions checked against 
 |---|---|---|---|
 | Framework | `next` (App Router) | **16.4.5** | 16.4.6 came out today. 16.4.5 matches the Context7 docs snapshot. Can move up after the spike. |
 | UI runtime | `react`, `react-dom` | 19.3.1 | Next 16.4.5 needs `^19.0.0` as a peer. |
-| Language | `typescript` | **6.0.3** | 7.0.2 is `latest` (the native Go port). Next's type plugin and many tools still rely on the classic JS compiler API, so I'm proposing 6.x for now. **Decision for you.** |
+| Language | `typescript` | **6.0.3** | Decided. 7.0.2 is `latest` (the native Go port), but Next's type plugin and many tools still rely on the classic JS compiler API. |
 | Color math | `culori` | 4.0.2 | OKLab/OKLCH, sRGB↔linear. |
 | EXIF / embedded preview | `exifr` | 7.1.3 | Last released 2022. Stable, but no new fixes are coming. |
 | Local store | `dexie` | 4.4.7 | IndexedDB working copy. |
@@ -18,7 +18,7 @@ Status: proposal for Gate 0. Nothing here is app code. Versions checked against 
 | Worker RPC | `comlink` | 4.4.2 | Small, typed `postMessage` wrapper. Optional. |
 | Unit tests | `vitest` | 5.1.0 | Runs the pure analysis functions in Node. |
 | E2E / screenshots | `@playwright/test` | 1.65.0 | Smoke tests and mockup PNGs. |
-| Agent browser | `@playwright/mcp` | `@latest` (0.0.85 today) | `.mcp.json` uses `@latest` because the brief says so. That conflicts with rule 8 (pin versions). Should I pin it to 0.0.85? |
+| Agent browser | `@playwright/mcp` | **0.0.85** | Decided: pinned in `.mcp.json` per rule 8 (the brief said `@latest`). |
 | Hosting | Vercel | — | Only after Gate 5. |
 
 Node 22.15.0, npm 10.9.2 and git 2.50 are installed locally. Next needs Node ≥ 20.9.
@@ -56,12 +56,12 @@ colorway/
   supabase/migrations/       # SQL + RLS policies
   spike/                     # Phase 1 scripts + contact sheet (out/ gitignored)
   mockups/                   # Phase 2 static HTML + PNGs
-  test-photos/{jpeg,raw}/    # your photos. Gitignored, never committed.
+  reference/                 # your test photos (37 reference screenshots, 2× R6 CR3, comparison-photo.jpg). Gitignored, never committed.
   tests/{unit,e2e}/
   docs/
 ```
 
-Phase 0 created only `docs/`, `spike/`, `mockups/` and `test-photos/{jpeg,raw}/`, plus `.gitignore` and `.mcp.json`.
+Phase 0 created only `docs/`, `spike/` and `mockups/`, plus `.gitignore` and `.mcp.json`. Test photos live in `reference/` (the earlier `test-photos/` folder was removed).
 
 ## 3. Data model
 
@@ -81,7 +81,11 @@ Each table has `user_id uuid references auth.users`, `updated_at`, and a soft-de
 - Storage bucket `thumbs/{user_id}/{photo_id}.webp`, private, with a storage RLS policy on the path prefix. Thumbnails are re-encoded through canvas, which drops all EXIF and GPS.
 - Sync: last-write-wins on `updated_at` per row. Push dirty rows, then pull rows where `updated_at > lastPulledAt`. Each analysis row carries the algorithm `version`, so changing thresholds triggers a local recompute.
 
-## 4. Open decisions for Gate 0
-1. TypeScript 6.0.3 (my recommendation) or 7.0.2.
-2. Pin `@playwright/mcp` to 0.0.85, or keep `@latest` as the brief says.
-3. Phase 1 needs your photos in `test-photos/jpeg` and `test-photos/raw` (R6 CR3 + C-RAW).
+## 4. Test data (`reference/`)
+- **Inspiration set:** 37 PNG screenshots (about 2504×1780, sunsets, fog, overcast valleys and so on). They're screen captures, so some include UI overlays (carousel arrows, possibly borders). The spike will trim a small edge margin and report any frames where the crop doesn't remove them.
+- **Compare:** `comparison-photo.jpg` (5472×3648).
+- **RAW:** `raw-test.CR3` (portrait) and `raw-test-2.CR3`, both Canon EOS R6. Whether either one is C-RAW will be read from the file during the spike. If neither is, a C-RAW sample is still needed for that test.
+- **Starter set:** the brief says the starter set comes from your own photos. If these screenshots are other photographers' work, they shouldn't be shipped publicly. Decide in Phase 3.
+
+## 5. Design skills (Phase 2, ask first)
+Hallmark is now installed. The plan is Hallmark to build the mockups from the brief and Impeccable for the audit and polish. I'll ask before invoking either.
