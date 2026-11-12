@@ -18,7 +18,11 @@ export function SyncProvider() {
       if (!signedIn) return;
       if (!navigator.onLine) { setStatus({ state: "offline" }); return; }
       setStatus({ state: "syncing", error: null });
-      try { await syncNow(); setStatus({ state: "idle", lastSyncedAt: Date.now() }); }
+      try {
+        const r = await syncNow();
+        if (r.failed.length) setStatus({ state: "error", error: `${r.failed.length} photo${r.failed.length > 1 ? "s" : ""} did not sync: ${r.failed[0].error}` });
+        else setStatus({ state: "idle", lastSyncedAt: Date.now() });
+      }
       catch (e) { setStatus({ state: "error", error: e instanceof Error ? e.message : "Sync failed" }); }
     };
     const soon = () => { if (timer) clearTimeout(timer); timer = setTimeout(go, 3000); };

@@ -9,6 +9,8 @@ const STEPS = [
   { h: "Grouped into a palette", p: "Similar pixels pull together. Each group becomes one colour in the photo’s palette, with a hex code to copy." },
   { h: "Turn it around", p: "Drag the cloud, or focus it and use the arrow keys, to see the colour from every side." },
 ];
+/** The static story has nothing to drag, so its last step says what the 3D view would show. */
+const STATIC_LAST = "On a desktop with motion on, this cloud turns in 3D so you can see the colour from every side.";
 const FALLBACK = ["/home/sample.webp", "/home/cloud.webp", "/home/cloud-grouped.webp", "/home/cloud-grouped.webp"];
 
 /** 3D only where it helps: motion allowed, a wide screen, a capable device and WebGL. */
@@ -94,7 +96,7 @@ export function HomeView() {
           </div>
           <ol className="story-steps">
             {STEPS.map((s, i) => (
-              <li key={s.h} className={i === step ? "is-on" : undefined}><h2>{s.h}</h2><p>{s.p}</p></li>
+              <li key={s.h} className={i === step ? "is-on" : undefined}><h2>{s.h}</h2><p>{i === 3 && mode !== "3d" ? STATIC_LAST : s.p}</p></li>
             ))}
           </ol>
         </section>

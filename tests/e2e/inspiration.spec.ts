@@ -36,6 +36,11 @@ test.describe("Inspiration", () => {
     await expect(page.getByRole("button", { name: "Rename" })).toBeVisible();
     await page.screenshot({ path: "test-results/family.png", fullPage: true });
 
+    // remove one photo: the count drops and families regroup
+    await page.goto("/inspiration");
+    await page.getByRole("button", { name: /^Remove / }).first().click();
+    await expect(page.locator(".ph-card")).toHaveCount(19);
+
     console.log(`20 photos to families in ${ms} ms`);
     expect(external, "no third-party requests").toEqual([]);
     expect(errors).toEqual([]);

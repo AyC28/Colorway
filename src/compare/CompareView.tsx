@@ -47,7 +47,7 @@ export function CompareView() {
     if (!f || !g) return;
     if (!/image\/(jpeg|png)/.test(f.type)) { setState("error"); setError("Compare takes one JPEG or PNG. RAW files go to the Edit guide."); return; }
     setFile({ url: URL.createObjectURL(f), name: f.name, isJpeg: f.type === "image/jpeg" });
-    setState("working"); setResult(null);
+    setState("working"); setResult(null); setAnalysis(null);
     try {
       const { analysis: a } = await getEngine().analyze(f, 1);
       setAnalysis(a);

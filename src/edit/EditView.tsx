@@ -13,16 +13,10 @@ import type { EditFit, ParamRange } from "@/analysis/editModel";
 import type { FamilyMatch } from "@/analysis/compare";
 import { BAND_STEPS } from "@/compare/presentation";
 import { decodeRaw, RAW_EXT, type RawResult } from "./raw";
-import { clippedShare, linearSample, neutralRender, shadowRoom } from "./measure";
 import { GradingGuide, HslGuide } from "./ColourGuide";
 
 type Loaded = { name: string; previewUrl: string; analysis: PhotoAnalysis; lin: Float32Array; raw: RawResult | null; clipped: number | null; stops: number | null; matches: FamilyMatch[] };
 
-async function toBlob(rgba: Uint8ClampedArray, w: number, h: number) {
-  const c = new OffscreenCanvas(w, h);
-  c.getContext("2d")!.putImageData(new ImageData(new Uint8ClampedArray(rgba), w, h), 0, 0);
-  return c.convertToBlob({ type: "image/jpeg", quality: 0.9 });
-}
 async function jpegLinear(file: File) {
   const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
   const s = Math.min(1, 1200 / Math.max(bmp.width, bmp.height)), w = Math.round(bmp.width * s), h = Math.round(bmp.height * s);
@@ -76,7 +70,7 @@ export function EditView() {
     const f = g?.families.families.find((x) => x.id === famId);
     if (!f) return;
     setState("fitting"); setFit(null);
-    try { setFit(await getEngine().fitEdit(l.lin, f.summary.tone)); setState("idle"); }
+    try { setFit(await getEngine().fitEdit(l.lin, f.summary.tone, !!l.raw)); setState("idle"); }
     catch (e) { setState("error"); setError(e instanceof Error ? e.message : "The edit model failed"); }
   };
 
@@ -88,11 +82,9 @@ export function EditView() {
       let raw: RawResult | null = null, previewBlob: Blob, lin: Float32Array, clipped: number | null = null, stops: number | null = null;
       if (RAW_EXT.test(file.name)) {
         raw = await decodeRaw(file);
-        const r = neutralRender(raw.px, raw.width, raw.height);
-        previewBlob = await toBlob(r.rgba, r.width, r.height);
-        lin = linearSample(raw.px, raw.width, raw.height);
-        clipped = clippedShare(raw.px, raw.width, raw.height);
-        stops = shadowRoom(raw.px, raw.width, raw.height).stops;
+        // render and measure in the worker: these loops cover ~15 M values
+        const m = await getEngine().measureRaw(raw.px, raw.width, raw.height);
+        previewBlob = m.preview; lin = m.lin; clipped = m.clipped; stops = m.stops;
       } else if (/image\/(jpeg|png)/.test(file.type)) {
         previewBlob = file; lin = await jpegLinear(file);
       } else throw new Error("Open a RAW file (Canon CR3 works best) or a JPEG or PNG.");
@@ -110,7 +102,7 @@ export function EditView() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader action={loaded && g ? <AddPhotos accept={ACCEPT} onFiles={open} label="Open another file" className="btn btn-secondary" disabled={busy} /> : undefined} />
       <main className="container">
         {mobile && <p className="banner" role="note">RAW files are large and work best on a desktop. On a phone, open a JPG or PNG instead.</p>}
         <div className="intro">

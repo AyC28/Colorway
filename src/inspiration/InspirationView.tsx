@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader } from "@/ui/SiteHeader";
 import { HexButton } from "@/ui/HexButton";
 import { FullAnalysis, Histogram, HueChart, PaletteCards, Strip, Wheel, Estimated, pct } from "@/ui/viz";
-import { addPhotos, analysePending, loadStarterSet, MAX_PHOTOS, movePhoto } from "@/library/library";
+import { addPhotos, analysePending, loadStarterSet, MAX_PHOTOS, movePhoto, removePhoto } from "@/library/library";
 import { useLibrary, useThumbUrls } from "@/library/hooks";
 import type { Family } from "@/analysis/group";
 import { AddPhotos } from "./AddPhotos";
@@ -54,7 +54,7 @@ export function InspirationView() {
       <main className={`container${dragOver ? " is-drop" : ""}`}
         onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragOver(true); } }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); setDragOver(false); void ingest([...e.dataTransfer.files]); }}>
+        onDrop={(e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); setDragOver(false); if (!busy) void ingest([...e.dataTransfer.files]); }}>
         <div className="intro">
           <h1>Your reference look</h1>
           {g && <dl className="facts"><div><dt>Photos</dt><dd className="num">{g.photoIds.length}</dd></div><div><dt>Families</dt><dd className="num">{fams.length}</dd></div><div><dt>Near-neutral</dt><dd className="num">{pct(g.set.neutralShare)}</dd></div></dl>}
@@ -78,7 +78,7 @@ export function InspirationView() {
         {errors.length > 0 && (
           <section className="card errors" aria-labelledby="err-h">
             <h2 id="err-h" className="card-h">{errors.length === 1 ? "One photo could not be read" : `${errors.length} photos could not be read`}</h2>
-            <ul>{errors.map((p) => <li key={p.id}><b>{p.name}</b>: {p.error ?? "unknown error"}. Try exporting it again as JPEG or PNG.</li>)}</ul>
+            <ul>{errors.map((p) => <li key={p.id}><b>{p.name}</b>: {p.error ?? "unknown error"}. Try exporting it again as JPEG or PNG. <button type="button" className="link-btn" onClick={() => void removePhoto(p.id)}>Remove</button></li>)}</ul>
           </section>
         )}
 
@@ -138,7 +138,8 @@ export function InspirationView() {
                     {a ? (<>
                       <Strip p={a.photoPalette} className="strip strip-ph" />
                       <p className="ph-hex">{a.photoPalette.slice(0, 3).map((s) => <HexButton key={s.hex} hex={s.hex} />)}</p>
-                    </>) : <p className="note">{p.status === "analysing" ? "Analysing…" : "Waiting…"}</p>}
+                    </>) : <p className="note">Analysing…</p>}
+                    <button type="button" className="link-btn ph-remove" aria-label={`Remove ${p.name}`} onClick={() => void removePhoto(p.id)}>Remove</button>
                   </li>
                 );
               })}

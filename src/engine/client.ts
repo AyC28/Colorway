@@ -41,14 +41,14 @@ export class AnalysisEngine {
     }
   }
 
-  private send(req: DistributiveOmit<Request, "id">): Promise<Response> {
+  private send(req: DistributiveOmit<Request, "id">, transfer: Transferable[] = []): Promise<Response> {
     if (this.broken) return Promise.reject(new Error(this.broken));
     const id = this.nextId++;
     const i = this.busy.indexOf(Math.min(...this.busy)); // least-loaded worker
     this.busy[i]++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.workers[i].postMessage({ ...req, id } as Request);
+      this.workers[i].postMessage({ ...req, id } as Request, transfer);
     });
   }
 
@@ -70,9 +70,16 @@ export class AnalysisEngine {
     throw new Error("Unexpected worker reply");
   }
 
-  async fitEdit(lin: Float32Array, target: ToneStats): Promise<EditFit> {
-    const r = await this.send({ kind: "fitEdit", lin, target });
+  async fitEdit(lin: Float32Array, target: ToneStats, raw = false): Promise<EditFit> {
+    const r = await this.send({ kind: "fitEdit", lin, target, raw });
     if (r.ok && r.kind === "fitEdit") return r.fit;
+    throw new Error("Unexpected worker reply");
+  }
+
+  /** RAW render + measurements off the main thread. The pixel buffer is transferred (unusable here afterwards). */
+  async measureRaw(px: Uint16Array, width: number, height: number) {
+    const r = await this.send({ kind: "measureRaw", px, width, height }, [px.buffer]);
+    if (r.ok && r.kind === "measureRaw") return r;
     throw new Error("Unexpected worker reply");
   }
 

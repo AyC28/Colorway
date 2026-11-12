@@ -22,3 +22,15 @@ describe("edit model", () => {
     expect(applyModel(sample(1), { exposure: 2, temp: 0, contrast: 0, highlights: 0, shadows: 0 }).clipped).toBeGreaterThan(0.05);
   });
 });
+
+import { baseCurve } from "@/analysis/editModel";
+describe("base curve for RAW", () => {
+  it("keeps black, mid-grey and white, and is monotonic", () => {
+    expect(baseCurve(0)).toBe(0); expect(baseCurve(0.5)).toBe(0.5); expect(baseCurve(1)).toBe(1);
+    for (let x = 0; x < 1; x += 0.01) expect(baseCurve(x + 0.01)).toBeGreaterThan(baseCurve(x));
+  });
+  it("adds contrast: darker shadows, brighter highlights", () => {
+    expect(baseCurve(0.25)).toBeLessThan(0.25);
+    expect(baseCurve(0.75)).toBeGreaterThan(0.75);
+  });
+});

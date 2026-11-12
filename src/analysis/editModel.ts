@@ -35,8 +35,16 @@ const KEYS = Object.keys(GRID) as (keyof EditParams)[];
 
 type Stats = { p5: number; p10: number; p50: number; p90: number; p95: number; meanA: number; meanB: number; clipped: number };
 
+/**
+ * An approximate default base curve (a gentle S in OKLab L, endpoints and mid-grey fixed).
+ * RAW data is scene-linear with no tone curve, while family stats come from finished,
+ * display-referred photos; applying this first stops the fit "adding back" the missing
+ * base contrast. Approximate: Lightroom's own default curves are not published.
+ */
+export const baseCurve = (L: number) => L + 0.45 * (L - 0.5) * (1 - Math.abs(2 * L - 1));
+
 /** Apply the model to a linear RGB sample (n × 3, camera WB already applied) and measure. */
-export function applyModel(lin: Float32Array, p: EditParams): Stats {
+export function applyModel(lin: Float32Array, p: EditParams, raw = false): Stats {
   const n = lin.length / 3;
   const Ls = new Float32Array(n);
   const lab = new Float32Array(3);
@@ -48,7 +56,7 @@ export function applyModel(lin: Float32Array, p: EditParams): Stats {
     if (r >= 1 || gg >= 1 || b >= 1) clipped++;
     r = Math.min(1, r); gg = Math.min(1, gg); b = Math.min(1, b);
     linearToOklab(r, gg, b, lab);
-    let L = lab[0];
+    let L = raw ? baseCurve(lab[0]) : lab[0];
     const [ws, , wh] = rangeWeights(L);
     L = 0.5 + (L - 0.5) * (1 + (p.contrast / 100) * 0.6);
     L += (p.highlights / 100) * 0.14 * wh + (p.shadows / 100) * 0.14 * ws;
@@ -74,9 +82,9 @@ const steps = (k: keyof EditParams) => {
   return out;
 };
 
-export function fitEdit(lin: Float32Array, target: ToneStats, tolerance = 0.35): EditFit {
+export function fitEdit(lin: Float32Array, target: ToneStats, tolerance = 0.35, raw = false): EditFit {
   const p: EditParams = { exposure: 0, temp: 0, contrast: 0, highlights: 0, shadows: 0 };
-  const L = (q: EditParams) => loss(applyModel(lin, q), target);
+  const L = (q: EditParams) => loss(applyModel(lin, q, raw), target);
   const baselineLoss = L(p);
   let best = baselineLoss;
   for (let pass = 0; pass < 4; pass++) {
@@ -96,7 +104,7 @@ export function fitEdit(lin: Float32Array, target: ToneStats, tolerance = 0.35):
   }
   return {
     ranges, loss: best, baselineLoss,
-    clippedBefore: applyModel(lin, { exposure: 0, temp: 0, contrast: 0, highlights: 0, shadows: 0 }).clipped,
-    clippedAfter: applyModel(lin, p).clipped,
+    clippedBefore: applyModel(lin, { exposure: 0, temp: 0, contrast: 0, highlights: 0, shadows: 0 }, raw).clipped,
+    clippedAfter: applyModel(lin, p, raw).clipped,
   };
 }

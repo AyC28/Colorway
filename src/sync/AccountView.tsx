@@ -6,6 +6,8 @@ import { useLibrary } from "@/library/hooks";
 import { supabase } from "./client";
 import { syncNow } from "./sync";
 import { setStatus, useSyncStatus } from "./status";
+import { useState } from "react";
+import { db } from "@/db/db";
 
 export function AccountView() {
   const s = useSyncStatus();
@@ -13,9 +15,16 @@ export function AccountView() {
   const router = useRouter();
   const sync = async () => {
     setStatus({ state: "syncing", error: null });
-    try { await syncNow(); setStatus({ state: "idle", lastSyncedAt: Date.now() }); } catch (e) { setStatus({ state: "error", error: e instanceof Error ? e.message : "Sync failed" }); }
+    try {
+      const r = await syncNow();
+      if (r.failed.length) setStatus({ state: "error", error: `${r.failed.length} photo${r.failed.length > 1 ? "s" : ""} did not sync: ${r.failed[0].error}` });
+      else setStatus({ state: "idle", lastSyncedAt: Date.now() });
+    } catch (e) { setStatus({ state: "error", error: e instanceof Error ? e.message : "Sync failed" }); }
   };
+  const [confirmWipe, setConfirmWipe] = useState(false);
   const signOut = async () => { await supabase()?.auth.signOut(); router.replace("/"); };
+  /** For shared devices: remove every photo, analysis and setting stored here, then sign out. */
+  const signOutAndWipe = async () => { await supabase()?.auth.signOut(); await db().delete(); window.location.replace("/"); };
   const pending = lib.photos.filter((p) => p.dirty !== false && p.status === "done").length;
 
   return (
@@ -34,6 +43,12 @@ export function AccountView() {
               <div><dt>What syncs</dt><dd>Palettes, families and their names, grid order, and 400-pixel thumbnails with no camera or location data. Original photos stay on the device you added them on.</dd></div>
             </dl>
             <div className="actions"><button type="button" className="btn btn-primary" onClick={sync} disabled={s.state === "syncing"}>Sync now</button><button type="button" className="btn btn-secondary" onClick={signOut}>Sign out</button></div>
+            <div className="wipe">
+              {!confirmWipe ? <button type="button" className="link-btn" onClick={() => setConfirmWipe(true)}>Sign out and remove this device’s data</button> : (<>
+                <p role="alert">This deletes every photo, original and setting stored in this browser. Anything not yet synced is lost. Your account keeps what has synced.</p>
+                <div className="actions"><button type="button" className="btn btn-primary" onClick={signOutAndWipe}>Remove this device’s data</button><button type="button" className="btn btn-secondary" onClick={() => setConfirmWipe(false)}>Keep it</button></div>
+              </>)}
+            </div>
           </section>
         )}
       </main>

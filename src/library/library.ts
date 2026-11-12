@@ -6,7 +6,7 @@
 import { liveQuery } from "dexie";
 import { db, isCurrent, type GroupingRow, type PhotoRow } from "@/db/db";
 import { ANALYSIS_VERSION } from "@/analysis/config";
-import { summarize, type Family } from "@/analysis/group";
+import { summarize, zscore, type Family } from "@/analysis/group";
 import type { PhotoAnalysis } from "@/analysis/photo";
 import { AnalysisEngine } from "@/engine/client";
 import { makeThumb } from "./thumb";
@@ -46,8 +46,14 @@ export async function loadStarterSet(onProgress?: (done: number, total: number) 
   return addPhotos(files, onProgress);
 }
 
-/** Analyse every photo without a current analysis (new photos, or after a version bump). */
-export async function analysePending(onProgress?: (done: number, total: number) => void) {
+/** Analyse every photo without a current analysis (new photos, or after a version bump). Runs one at a time. */
+let queue: Promise<void> = Promise.resolve();
+export function analysePending(onProgress?: (done: number, total: number) => void): Promise<void> {
+  const next = queue.then(() => analyseOnce(onProgress));
+  queue = next.catch(() => {});
+  return next;
+}
+async function analyseOnce(onProgress?: (done: number, total: number) => void) {
   const d = db();
   const all = await d.photos.toArray();
   const have = new Map((await d.analyses.toArray()).map((a) => [a.photoId, a]));
@@ -57,11 +63,12 @@ export async function analysePending(onProgress?: (done: number, total: number) 
   let done = 0;
   onProgress?.(0, todo.length);
   await Promise.all(todo.filter((p) => p.original).map(async (p) => {
-    await d.photos.update(p.id, { status: "analysing" });
     try {
       const { analysis } = await getEngine().analyze(p.original!, seedOf(p.id));
-      await d.analyses.put({ photoId: p.id, version: ANALYSIS_VERSION, analysis });
-      await d.photos.update(p.id, { status: "done", error: undefined, dirty: true });
+      await d.transaction("rw", d.analyses, d.photos, async () => {
+        await d.analyses.put({ photoId: p.id, version: ANALYSIS_VERSION, analysis });
+        await d.photos.update(p.id, { status: "done", error: undefined, dirty: true });
+      });
     } catch (e) {
       await d.photos.update(p.id, { status: "error", error: e instanceof Error ? e.message : "Analysis failed" });
     }
@@ -104,6 +111,12 @@ export async function regroup() {
     members[p.familyOverride].push(p.id);
   }
   await resummarize(families.families, members, ready.map((p) => p.id), rows);
+  families.families = families.families.filter((f) => members[f.id].length > 0);
+  for (const k of Object.keys(members)) if (!members[k].length) delete members[k];
+  for (const f of families.families) {
+    const zs = members[f.id].map((id) => zscore(rows.get(id)!.features, families.standardizer));
+    f.centroidZ = zs[0].map((_, j) => zs.reduce((s, z) => s + z[j], 0) / zs.length);
+  }
   const names = Object.fromEntries(Object.entries(prev?.names ?? {}).filter(([k]) => members[k]));
   const row: GroupingRow = { key: "current", version: ANALYSIS_VERSION, photoIds: ready.map((p) => p.id), set, families, members, names, updatedAt: Date.now(), dirty: true };
   await d.grouping.put(row);
@@ -142,6 +155,7 @@ const EMPTY: LibraryState = { loaded: false, photos: [], analyses: new Map(), gr
 let state = EMPTY;
 const listeners = new Set<() => void>();
 let sub: { unsubscribe(): void } | null = null;
+let flush: ReturnType<typeof setTimeout> | null = null;
 export function subscribeLibrary(cb: () => void) {
   listeners.add(cb);
   if (!sub) {
@@ -149,7 +163,14 @@ export function subscribeLibrary(cb: () => void) {
       const d = db();
       const [photos, analyses, grouping] = await Promise.all([d.photos.orderBy("addedAt").toArray(), d.analyses.toArray(), d.grouping.get("current")]);
       return { loaded: true, photos, analyses: new Map(analyses.filter(isCurrent).map((a) => [a.photoId, a.analysis])), grouping: grouping ?? null };
-    }).subscribe({ next: (s) => { state = s; listeners.forEach((l) => l()); }, error: () => { state = { ...state, loaded: true }; listeners.forEach((l) => l()); } });
+    }).subscribe({
+      next: (s) => {
+        state = s;
+        // coalesce bursts (50 photos finishing in a row) into one re-render per ~120 ms
+        if (!flush) flush = setTimeout(() => { flush = null; listeners.forEach((l) => l()); }, state.loaded && s.photos.length ? 120 : 0);
+      },
+      error: () => { state = { ...state, loaded: true }; listeners.forEach((l) => l()); },
+    });
   }
   return () => { listeners.delete(cb); if (!listeners.size) { sub?.unsubscribe(); sub = null; } };
 }

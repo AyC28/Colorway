@@ -7,6 +7,7 @@ import { analyzePhoto } from "@/analysis/photo";
 import { buildFamilies, summarize } from "@/analysis/group";
 import { comparePhoto } from "@/analysis/compare";
 import { fitEdit } from "@/analysis/editModel";
+import { clippedShare, linearSample, neutralRender, shadowRoom } from "@/edit/measure";
 import { CONFIG } from "@/analysis/config";
 import type { Request, Response } from "./protocol";
 
@@ -40,8 +41,16 @@ self.onmessage = async (e: MessageEvent<Request>) => {
       reply({ id: req.id, ok: true, kind: "group", set: summarize(req.photos), families: buildFamilies(req.photos) });
     } else if (req.kind === "compare") {
       reply({ id: req.id, ok: true, kind: "compare", result: comparePhoto(req.photo, req.families, req.isJpeg) });
+    } else if (req.kind === "fitEdit") {
+      reply({ id: req.id, ok: true, kind: "fitEdit", fit: fitEdit(req.lin, req.target, 0.35, req.raw) });
     } else {
-      reply({ id: req.id, ok: true, kind: "fitEdit", fit: fitEdit(req.lin, req.target) });
+      const { px, width: w, height: h } = req;
+      const r = neutralRender(px, w, h);
+      const c = new OffscreenCanvas(r.width, r.height);
+      c.getContext("2d")!.putImageData(new ImageData(r.rgba, r.width, r.height), 0, 0);
+      const preview = await c.convertToBlob({ type: "image/jpeg", quality: 0.9 });
+      const lin = linearSample(px, w, h);
+      reply({ id: req.id, ok: true, kind: "measureRaw", preview, lin, clipped: clippedShare(px, w, h), stops: shadowRoom(px, w, h).stops }, [lin.buffer]);
     }
   } catch (err) {
     reply({ id: req.id, ok: false, error: err instanceof Error ? err.message : String(err) });

@@ -9,7 +9,7 @@ import { ANALYSIS_VERSION } from "@/analysis/config";
 import { supabase } from "./client";
 import { analysisFromJson, analysisToJson } from "./serialize";
 
-export interface SyncResult { pushed: number; pulled: number; deleted: number }
+export interface SyncResult { pushed: number; pulled: number; deleted: number; failed: { name: string; error: string }[] }
 const BUCKET = "thumbs";
 let running: Promise<SyncResult> | null = null;
 
@@ -23,11 +23,19 @@ async function run(): Promise<SyncResult> {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) throw new Error("Not signed in");
   const d = db();
-  const r: SyncResult = { pushed: 0, pulled: 0, deleted: 0 };
+  const r: SyncResult = { pushed: 0, pulled: 0, deleted: 0, failed: [] };
+
+  // this device's data belongs to one account: never push it into a different one
+  const owner = (await d.meta.get("owner"))?.value;
+  if (owner && owner !== user.id) throw new Error("This device holds another account's photos. Sign out and remove this device's data first, or sign back in to that account.");
+  if (!owner) await d.meta.put({ key: "owner", value: user.id });
+  // bookmark the pull BEFORE pushing, and skip what this run pushed, so nothing echoes straight back
+  const since = (await d.meta.get(`pulledAt:${user.id}`))?.value ?? "1970-01-01T00:00:00Z";
+  const pushedIds = new Set<string>();
 
   // ---- push deletions
   for (const t of await d.tombstones.toArray()) {
-    await sb.storage.from(BUCKET).remove([`${user.id}/${t.id}.webp`]);
+    await sb.storage.from(BUCKET).remove([`${user.id}/${t.id}.webp`, `${user.id}/${t.id}.jpg`]);
     const { error } = await sb.from("photos").update({ deleted_at: new Date().toISOString() }).eq("id", t.id);
     if (error) throw error;
     await d.tombstones.delete(t.id); r.deleted++;
@@ -36,20 +44,26 @@ async function run(): Promise<SyncResult> {
   // ---- push photos (+ thumbnail + analysis)
   const analyses = new Map((await d.analyses.toArray()).map((a) => [a.photoId, a]));
   for (const p of (await d.photos.toArray()).filter((x) => x.dirty !== false && x.status === "done")) {
-    const path = `${user.id}/${p.id}.webp`;
-    if (p.thumb.size) {
-      const up = await sb.storage.from(BUCKET).upload(path, p.thumb, { upsert: true, contentType: "image/webp" });
-      if (up.error) throw up.error;
+    // one photo failing (e.g. an oversized thumbnail) must not stop the rest
+    try {
+      const ext = p.thumb.type === "image/jpeg" ? "jpg" : "webp";
+      const path = `${user.id}/${p.id}.${ext}`;
+      if (p.thumb.size) {
+        const up = await sb.storage.from(BUCKET).upload(path, p.thumb, { upsert: true, contentType: p.thumb.type || "image/webp" });
+        if (up.error) throw up.error;
+      }
+      const row = { id: p.id, user_id: user.id, name: p.name, kind: p.kind, width: p.width, height: p.height, added_at: new Date(p.addedAt).toISOString(), family_override: p.familyOverride ?? null, thumb_path: p.thumb.size ? path : null, deleted_at: null };
+      const { error } = await sb.from("photos").upsert(row);
+      if (error) throw error;
+      const a = analyses.get(p.id);
+      if (a) {
+        const { error: e2 } = await sb.from("analyses").upsert({ photo_id: p.id, user_id: user.id, version: a.version, data: analysisToJson(a.analysis) });
+        if (e2) throw e2;
+      }
+      await d.photos.update(p.id, { dirty: false }); r.pushed++; pushedIds.add(p.id);
+    } catch (e) {
+      r.failed.push({ name: p.name, error: e instanceof Error ? e.message : String(e) });
     }
-    const row = { id: p.id, user_id: user.id, name: p.name, kind: p.kind, width: p.width, height: p.height, added_at: new Date(p.addedAt).toISOString(), family_override: p.familyOverride ?? null, thumb_path: p.thumb.size ? path : null, deleted_at: null };
-    const { error } = await sb.from("photos").upsert(row);
-    if (error) throw error;
-    const a = analyses.get(p.id);
-    if (a) {
-      const { error: e2 } = await sb.from("analyses").upsert({ photo_id: p.id, user_id: user.id, version: a.version, data: analysisToJson(a.analysis) });
-      if (e2) throw e2;
-    }
-    await d.photos.update(p.id, { dirty: false }); r.pushed++;
   }
 
   // ---- push grouping and grid documents
@@ -58,25 +72,32 @@ async function run(): Promise<SyncResult> {
     const { key: _k, dirty: _d, ...doc } = g;
     const { error } = await sb.from("groupings").upsert({ user_id: user.id, data: doc });
     if (error) throw error;
-    await d.grouping.update("current", { dirty: false });
+    await d.grouping.update("current", { dirty: false }); pushedIds.add("grouping");
   }
   const grid = await d.grid.get("current");
   if (grid && grid.dirty !== false) {
     const { key: _k, dirty: _d, ...doc } = grid;
     const { error } = await sb.from("grid_layouts").upsert({ user_id: user.id, data: doc });
     if (error) throw error;
-    await d.grid.update("current", { dirty: false });
+    await d.grid.update("current", { dirty: false }); pushedIds.add("grid");
   }
 
   // ---- pull
-  const since = (await d.meta.get(`pulledAt:${user.id}`))?.value ?? "1970-01-01T00:00:00Z";
   const { data: photos, error } = await sb.from("photos").select("*").gt("updated_at", since);
   if (error) throw error;
-  for (const rp of photos ?? []) {
+  const incoming = (photos ?? []).filter((x) => !pushedIds.has(x.id));
+  const wanted = incoming.filter((x) => !x.deleted_at).map((x) => x.id);
+  const remoteAnalyses = new Map<string, { version: number; data: Parameters<typeof analysisFromJson>[0] }>();
+  for (let i = 0; i < wanted.length; i += 50) {
+    const { data, error: e3 } = await sb.from("analyses").select("photo_id, version, data").in("photo_id", wanted.slice(i, i + 50));
+    if (e3) throw e3;
+    for (const a of data ?? []) remoteAnalyses.set(a.photo_id, a);
+  }
+  for (const rp of incoming) {
     const local = await d.photos.get(rp.id);
     if (rp.deleted_at) { if (local) { await d.photos.delete(rp.id); await d.analyses.delete(rp.id); r.pulled++; } continue; }
     if (local && local.dirty !== false) continue; // local edits win until pushed
-    const { data: ra } = await sb.from("analyses").select("*").eq("photo_id", rp.id).maybeSingle();
+    const ra = remoteAnalyses.get(rp.id);
     let thumb = local?.thumb ?? new Blob();
     if (!local && rp.thumb_path) {
       const dl = await sb.storage.from(BUCKET).download(rp.thumb_path);
@@ -92,10 +113,10 @@ async function run(): Promise<SyncResult> {
   }
   const local = await d.grouping.get("current");
   const { data: rg } = await sb.from("groupings").select("*").gt("updated_at", since).maybeSingle();
-  if (rg && (!local || local.dirty === false)) { await d.grouping.put({ ...rg.data, key: "current", dirty: false }); r.pulled++; }
+  if (rg && !pushedIds.has("grouping") && (!local || local.dirty === false)) { await d.grouping.put({ ...rg.data, key: "current", dirty: false }); r.pulled++; }
   const lgrid = await d.grid.get("current");
   const { data: rgrid } = await sb.from("grid_layouts").select("*").gt("updated_at", since).maybeSingle();
-  if (rgrid && (!lgrid || lgrid.dirty === false)) { await d.grid.put({ ...rgrid.data, key: "current", dirty: false }); r.pulled++; }
+  if (rgrid && !pushedIds.has("grid") && (!lgrid || lgrid.dirty === false)) { await d.grid.put({ ...rgrid.data, key: "current", dirty: false }); r.pulled++; }
   // bookmark by server time (never the device clock) so clock drift cannot skip rows
   const newest = [since, ...(photos ?? []).map((x) => x.updated_at), rg?.updated_at, rgrid?.updated_at].filter(Boolean).sort().at(-1)!;
   await d.meta.put({ key: `pulledAt:${user.id}`, value: newest });

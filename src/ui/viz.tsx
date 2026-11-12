@@ -108,13 +108,19 @@ export function Wheel({ g, target, size = 72 }: { g: GradingRange; target?: Grad
 
 export function Estimated() { return <span className="est">estimated</span>; }
 
+/** The strip's colours as copyable hex codes (also what a screen reader gets). */
+export function HexList({ p }: { p: Swatch[] }) {
+  if (!p.length) return null;
+  return <ul className="hex-list" aria-label="Hex codes">{p.map((s, i) => <li key={s.hex + i}><HexButton hex={s.hex} /></li>)}</ul>;
+}
+
 /** Sky/ground, histogram, hue, grading and glow for a set or a family. */
 export function FullAnalysis({ s, idBase }: { s: GroupSummary; idBase: string }) {
   return (
     <div className="analysis">
       <section className="an an-sky">
-        <h3>Sky, top half</h3><Strip p={s.topPalette} className="strip strip-band" />
-        <h3>Ground, bottom half</h3><Strip p={s.bottomPalette} className="strip strip-band" />
+        <h3>Sky, top half</h3><Strip p={s.topPalette} className="strip strip-band" /><HexList p={s.topPalette} />
+        <h3>Ground, bottom half</h3><Strip p={s.bottomPalette} className="strip strip-band" /><HexList p={s.bottomPalette} />
       </section>
       <section className="an">
         <h3>Histogram</h3><Histogram rgb={s.rgbHist} />
@@ -122,7 +128,7 @@ export function FullAnalysis({ s, idBase }: { s: GroupSummary; idBase: string })
       </section>
       <section className="an">
         <div className="h-row"><h3>Color grading</h3><Estimated /></div>
-        <div className="wheels">{s.grading.map((g) => <figure key={g.range}><Wheel g={g} /><figcaption>{g.range}<span className="num">{Math.round(g.hue)}°, {g.sat}</span></figcaption></figure>)}</div>
+        <div className="wheels">{s.grading.map((g) => <figure key={g.range}><Wheel g={g} /><figcaption>{g.range}<span className="num">{Math.round(g.hue)}°, {g.sat}</span><HexButton hex={g.hex} /></figcaption></figure>)}</div>
         <div className="h-row"><h3>Glow</h3><Estimated /></div>
         {s.glow.score === null ? <p className="note">No bright highlights to measure.</p> : (<>
           <p className="glow"><span className="figure num">{s.glow.score}</span> of 100, {s.glow.label}</p>
