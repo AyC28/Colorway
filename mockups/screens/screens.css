@@ -106,7 +106,7 @@
 .key-fam { margin-left: var(--space-md); background: var(--color-ink); }
 
 /* ---------- grid */
-.grid-tools { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-xl); }
+.grid-tools { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-xl); justify-content: center; }
 .seg { display: flex; flex-wrap: wrap; align-items: center; gap: 0; margin: 0; padding: 0; border: 0; }
 .seg legend { margin-bottom: var(--space-2xs); font-weight: 500; font-size: var(--text-sm); color: var(--color-muted); }
 .seg-b { min-height: 36px; padding: 0 var(--space-md); border: var(--rule-bar) solid var(--color-ink); background: var(--color-plate); color: var(--color-ink); font-weight: 500; cursor: pointer; transition: background-color var(--dur-micro) var(--ease-out); }
@@ -117,7 +117,7 @@
 .seg-b:focus-visible, .check input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .check { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 36px; font-weight: 500; }
 .check input { width: 18px; height: 18px; accent-color: var(--color-ink); }
-.devices { display: grid; grid-template-columns: 402px minmax(0, 420px); gap: var(--space-xl); align-items: start; }
+.devices { display: grid; grid-template-columns: 402px minmax(0, 420px); gap: var(--space-xl); align-items: start; justify-content: center; }
 .device { display: grid; gap: var(--space-xs); margin: 0; }
 .device figcaption { color: var(--color-muted); font-size: var(--text-sm); }
 .screen { overflow: hidden; border: var(--rule-bar) solid var(--color-ink); background: var(--color-screen); color: var(--color-screen-ink); }
