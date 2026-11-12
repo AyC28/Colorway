@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SyncProvider } from "@/sync/SyncProvider";
+import { RegisterSW } from "@/ui/RegisterSW";
 
 const syne = localFont({ src: [{ path: "./fonts/syne-latin-700-normal.woff2", weight: "700" }], variable: "--font-syne", display: "swap", fallback: ["ui-sans-serif", "system-ui"] });
 const onest = localFont({
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <SyncProvider />
+        <RegisterSW />
       </body>
     </html>
   );

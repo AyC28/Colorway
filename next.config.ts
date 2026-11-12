@@ -24,6 +24,8 @@ const config: NextConfig = {
       { source: "/vendor/libraw/:path*", headers: [...isolation, { key: "Cross-Origin-Resource-Policy", value: "same-origin" }] },
       // bundled worker scripts (the analysis engine) must carry COEP to start inside the isolated /edit page
       { source: "/_next/static/:path*", headers: [{ key: "Cross-Origin-Embedder-Policy", value: "require-corp" }, { key: "Cross-Origin-Resource-Policy", value: "same-origin" }] },
+      // the service worker must always be re-checked, never served stale
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Content-Type", value: "application/javascript; charset=utf-8" }] },
       {
         source: "/:path*",
         headers: [
