@@ -13,6 +13,8 @@ const isolation = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // a package-lock.json in a parent folder would otherwise be taken as the workspace root
+  turbopack: { root: import.meta.dirname },
   poweredByHeader: false,
   async headers() {
     return [

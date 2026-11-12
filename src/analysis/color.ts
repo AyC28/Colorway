@@ -8,7 +8,7 @@
  * the fast path against it (see `selfCheck`).
  */
 import {
-  useMode,
+  useMode as registerMode, // culori's mode registry, not a React hook
   modeRgb,
   modeLrgb,
   modeOklab,
@@ -17,10 +17,10 @@ import {
   clampChroma,
 } from "culori/fn";
 
-const toRgb = useMode(modeRgb);
-const toOklab = useMode(modeOklab);
-useMode(modeLrgb);
-useMode(modeOklch);
+const toRgb = registerMode(modeRgb);
+const toOklab = registerMode(modeOklab);
+registerMode(modeLrgb);
+registerMode(modeOklch);
 
 export const SRGB_TO_LINEAR = (() => {
   const lut = new Float32Array(256);

@@ -2,7 +2,6 @@
 import { oklchToHex } from "../src/analysis/color";
 import type { Swatch } from "../src/analysis/palette";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
