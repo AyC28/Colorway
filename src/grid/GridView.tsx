@@ -1,0 +1,124 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { liveQuery } from "dexie";
+import { SiteHeader } from "@/ui/SiteHeader";
+import { useLibrary, useThumbUrls } from "@/library/hooks";
+import { db, type GridRow } from "@/db/db";
+import { biggestJumps, byFamily, moveTo, smoothFlow } from "./order";
+
+const GridIcon = () => <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M2 2h16v16H2zM7.33 2v16M12.67 2v16M2 7.33h16M2 12.67h16" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
+const SavedIcon = () => <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M5 2.5h10v15l-5-4-5 4z" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
+const DEFAULT: GridRow = { key: "current", order: [], mode: "flow", theme: "light", showFlow: true };
+const MODES: [GridRow["mode"], string][] = [["added", "As added"], ["family", "By family"], ["flow", "Smooth colour flow"]];
+
+export function GridView() {
+  const lib = useLibrary();
+  const thumb = useThumbUrls(lib.photos);
+  const [grid, setGrid] = useState<GridRow>(DEFAULT);
+  const [open, setOpen] = useState<{ id: string; url: string } | null>(null);
+  const [say, setSay] = useState("");
+  const dialog = useRef<HTMLDialogElement>(null);
+  const dragId = useRef<string | null>(null);
+
+  useEffect(() => { const s = liveQuery(() => db().grid.get("current")).subscribe((r) => setGrid(r ?? DEFAULT)); return () => s.unsubscribe(); }, []);
+  const save = (patch: Partial<GridRow>) => { const next = { ...grid, ...patch }; setGrid(next); void db().grid.put(next); };
+
+  const done = lib.photos.filter((p) => p.status === "done" && lib.analyses.has(p.id));
+  const added = done.map((p) => p.id);
+  const order =
+    grid.mode === "custom" ? [...grid.order.filter((id) => added.includes(id)), ...added.filter((id) => !grid.order.includes(id))]
+    : grid.mode === "family" ? byFamily(added, lib.grouping?.members ?? {})
+    : grid.mode === "flow" ? smoothFlow(added, lib.analyses) : added;
+  const jumps = biggestJumps(order.slice(0, 18), lib.analyses);
+  const nameOf = (id: string) => lib.photos.find((p) => p.id === id)?.name ?? "photo";
+
+  const reorder = (id: string, to: number) => {
+    const next = moveTo(order, id, to);
+    save({ mode: "custom", order: next });
+    setSay(`${nameOf(id)} moved to position ${next.indexOf(id) + 1} of ${next.length}`);
+  };
+  const show = (id: string) => {
+    const p = lib.photos.find((x) => x.id === id);
+    if (!p) return;
+    setOpen({ id, url: URL.createObjectURL(p.original) });
+    requestAnimationFrame(() => dialog.current?.showModal());
+  };
+  const close = () => { dialog.current?.close(); if (open) URL.revokeObjectURL(open.url); setOpen(null); };
+
+  return (
+    <>
+      <SiteHeader />
+      <main className="container" data-theme={grid.theme}>
+        <div className="intro"><h1>Grid preview</h1><p className="note">3:4 tiles, centre-cropped from each photo. Drag a tile, or focus it and press Alt with an arrow key, to reorder.</p></div>
+        <p className="vh" role="status" aria-live="polite">{say}</p>
+
+        {!lib.loaded && <div className="skeleton" aria-hidden="true"><div className="sk-row" /><div className="sk-cards" /></div>}
+        {lib.loaded && !done.length && (
+          <section className="card empty"><h2 className="card-h">Nothing to lay out yet</h2><p className="note">Add reference photos first; they appear here as 3:4 tiles you can reorder.</p><Link className="btn btn-primary" href="/inspiration">Go to Inspiration</Link></section>
+        )}
+
+        {done.length > 0 && (<>
+          <div className="grid-tools">
+            <fieldset className="seg"><legend>Theme</legend>
+              {(["light", "dark"] as const).map((t) => <button key={t} type="button" className="seg-b" aria-pressed={grid.theme === t} onClick={() => save({ theme: t })}>{t === "light" ? "Light" : "Dark"}</button>)}
+            </fieldset>
+            <fieldset className="seg"><legend>Order</legend>
+              {MODES.map(([m, label]) => <button key={m} type="button" className="seg-b" aria-pressed={grid.mode === m} onClick={() => save({ mode: m })}>{label}</button>)}
+              {grid.mode === "custom" && <span className="seg-note">Your own order</span>}
+            </fieldset>
+            <label className="check"><input type="checkbox" checked={grid.showFlow} onChange={(e) => save({ showFlow: e.target.checked })} /> Show colour flow</label>
+          </div>
+
+          <div className="devices">
+            <figure className="device device-phone">
+              <div className="screen">
+                <div className="profile">
+                  <span className="avatar">{order[0] && <img className="av-img" src={thumb(order[0])} alt="" />}</span>
+                  <div className="p-meta"><p className="p-name">Your profile</p><p className="p-count"><b className="num">{order.length}</b> posts</p></div>
+                </div>
+                <div className="p-tabs"><span className="is-on" aria-label="Posts"><GridIcon /></span><span aria-label="Saved"><SavedIcon /></span></div>
+                <ol className="tiles" aria-label="Grid tiles">
+                  {order.map((id, i) => {
+                    const top = lib.analyses.get(id)?.photoPalette[0];
+                    return (
+                      <li key={id} draggable onDragStart={() => { dragId.current = id; }} onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.preventDefault(); if (dragId.current && dragId.current !== id) reorder(dragId.current, i); dragId.current = null; }}>
+                        <button type="button" className="tile-b" aria-label={`${nameOf(id)}, tile ${i + 1}. Open full photo`}
+                          onClick={() => show(id)}
+                          onKeyDown={(e) => {
+                            if (!e.altKey) return;
+                            const d = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" ? -3 : e.key === "ArrowDown" ? 3 : 0;
+                            if (d) { e.preventDefault(); reorder(id, i + d); }
+                          }}>
+                          <img className="tile-img" src={thumb(id)} alt="" />
+                        </button>
+                        {grid.showFlow && top && <span className="flow" style={{ "--sw": top.hex } as CSSProperties} />}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+              <figcaption>Phone, 402 × 874</figcaption>
+            </figure>
+            {grid.showFlow && jumps.length > 0 && (
+              <aside className="card flow-card" aria-labelledby="fl-h">
+                <h2 id="fl-h" className="card-h">Colour flow</h2>
+                <p className="note">The strip under each tile is its main colour. Biggest jumps between neighbours:</p>
+                <ol className="jumps">{jumps.map((j) => (
+                  <li key={j.index}><span className="pair"><img className="j-img" src={thumb(j.a)} alt="" /><img className="j-img" src={thumb(j.b)} alt="" /></span>
+                    <span>Row <b className="num">{Math.floor(j.index / 3) + 1}</b>, tiles <b className="num">{(j.index % 3) + 1}</b> and <b className="num">{(j.index % 3) + 2}</b></span><span className="sub num">ΔE {j.deltaE}</span></li>
+                ))}</ol>
+              </aside>
+            )}
+          </div>
+        </>)}
+
+        <dialog ref={dialog} className="lightbox" onClose={close} aria-label="Full photo">
+          {open && <img src={open.url} alt={nameOf(open.id)} />}
+          <button type="button" className="btn btn-secondary" onClick={close}>Close</button>
+        </dialog>
+      </main>
+    </>
+  );
+}

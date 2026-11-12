@@ -42,13 +42,17 @@ export interface GroupingRow {
   updatedAt: number;
 }
 
+export interface GridRow { key: "current"; order: string[]; mode: "added" | "family" | "flow" | "custom"; theme: "light" | "dark"; showFlow: boolean }
+
 export class ColorwayDB extends Dexie {
+  grid!: EntityTable<GridRow, "key">;
   photos!: EntityTable<PhotoRow, "id">;
   analyses!: EntityTable<AnalysisRow, "photoId">;
   grouping!: EntityTable<GroupingRow, "key">;
   constructor() {
     super("colorway");
     this.version(1).stores({ photos: "id, addedAt, status", analyses: "photoId, version", grouping: "key" });
+    this.version(2).stores({ grid: "key" });
   }
 }
 
