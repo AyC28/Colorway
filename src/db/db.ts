@@ -63,6 +63,10 @@ export interface InquiryRow {
   analysis: PhotoAnalysis;
   /** shown in the Grid preview */
   inGrid: boolean;
+  /** changed since the last push (undefined counts as dirty) */
+  dirty?: boolean;
+  /** arrived from another device: `image` is only the thumbnail */
+  fromSync?: boolean;
   /** Edit guide only */
   edit?: {
     lin: Float32Array;

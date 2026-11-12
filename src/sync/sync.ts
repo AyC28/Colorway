@@ -7,7 +7,7 @@
 import { db, type PhotoRow } from "@/db/db";
 import { ANALYSIS_VERSION } from "@/analysis/config";
 import { supabase } from "./client";
-import { analysisFromJson, analysisToJson } from "./serialize";
+import { analysisFromJson, analysisToJson, b64, f32 } from "./serialize";
 
 export interface SyncResult { pushed: number; pulled: number; deleted: number; failed: { name: string; error: string }[] }
 const BUCKET = "thumbs";
@@ -35,8 +35,11 @@ async function run(): Promise<SyncResult> {
 
   // ---- push deletions
   for (const t of await d.tombstones.toArray()) {
-    await sb.storage.from(BUCKET).remove([`${user.id}/${t.id}.webp`, `${user.id}/${t.id}.jpg`]);
-    const { error } = await sb.from("photos").update({ deleted_at: new Date().toISOString() }).eq("id", t.id);
+    const inq = t.id.startsWith("inq:");
+    const id = inq ? t.id.slice(4) : t.id;
+    const base = `${user.id}/${inq ? "inq-" : ""}${id}`;
+    await sb.storage.from(BUCKET).remove([`${base}.webp`, `${base}.jpg`]);
+    const { error } = await sb.from(inq ? "inquiries" : "photos").update({ deleted_at: new Date().toISOString() }).eq("id", id);
     if (error) throw error;
     await d.tombstones.delete(t.id); r.deleted++;
   }
@@ -63,6 +66,27 @@ async function run(): Promise<SyncResult> {
       await d.photos.update(p.id, { dirty: false }); r.pushed++; pushedIds.add(p.id);
     } catch (e) {
       r.failed.push({ name: p.name, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  // ---- push Compare / Edit guide photos: analysis, measurements and thumbnail only
+  for (const q of (await d.inquiries.toArray()).filter((x) => x.dirty !== false)) {
+    try {
+      const ext = q.thumb.type === "image/jpeg" ? "jpg" : "webp";
+      const path = `${user.id}/inq-${q.id}.${ext}`;
+      if (!q.fromSync && q.thumb.size) {
+        const up = await sb.storage.from(BUCKET).upload(path, q.thumb, { upsert: true, contentType: q.thumb.type || "image/webp" });
+        if (up.error) throw up.error;
+      }
+      const edit = q.edit ? { ...q.edit, lin: b64(q.edit.lin) } : null;
+      const { error } = await sb.from("inquiries").upsert({
+        id: q.id, user_id: user.id, kind: q.kind, name: q.name, created_at: new Date(q.createdAt).toISOString(), in_grid: q.inGrid,
+        thumb_path: q.thumb.size ? path : null, data: { analysis: analysisToJson(q.analysis), edit }, deleted_at: null,
+      });
+      if (error) throw error;
+      await d.inquiries.update(q.id, { dirty: false }); r.pushed++; pushedIds.add(`inq:${q.id}`);
+    } catch (e) {
+      r.failed.push({ name: q.name, error: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -117,8 +141,26 @@ async function run(): Promise<SyncResult> {
   const lgrid = await d.grid.get("current");
   const { data: rgrid } = await sb.from("grid_layouts").select("*").gt("updated_at", since).maybeSingle();
   if (rgrid && !pushedIds.has("grid") && (!lgrid || lgrid.dirty === false)) { await d.grid.put({ ...rgrid.data, key: "current", dirty: false }); r.pulled++; }
+  // ---- pull Compare / Edit guide photos (they arrive as thumbnail + analysis; the thumbnail stands in for the image)
+  const { data: rinq, error: e4 } = await sb.from("inquiries").select("*").gt("updated_at", since);
+  if (e4) throw e4;
+  for (const rq of (rinq ?? []).filter((x) => !pushedIds.has(`inq:${x.id}`))) {
+    const local = await d.inquiries.get(rq.id);
+    if (rq.deleted_at) { if (local) { await d.inquiries.delete(rq.id); r.pulled++; } continue; }
+    if (local && local.dirty !== false) continue; // local edits win until pushed
+    let thumb = local?.thumb ?? new Blob();
+    if (!local && rq.thumb_path) { const dl = await sb.storage.from(BUCKET).download(rq.thumb_path); if (dl.data) thumb = dl.data; }
+    const e = rq.data.edit;
+    await d.inquiries.put({
+      id: rq.id, kind: rq.kind, name: rq.name, createdAt: Date.parse(rq.created_at), inGrid: rq.in_grid,
+      image: local?.image ?? thumb, thumb, analysis: analysisFromJson(rq.data.analysis),
+      edit: e ? { ...e, lin: f32(e.lin) } : undefined, dirty: false, fromSync: local ? local.fromSync : true,
+    });
+    r.pulled++;
+  }
+
   // bookmark by server time (never the device clock) so clock drift cannot skip rows
-  const newest = [since, ...(photos ?? []).map((x) => x.updated_at), rg?.updated_at, rgrid?.updated_at].filter(Boolean).sort().at(-1)!;
+  const newest = [since, ...(photos ?? []).map((x) => x.updated_at), ...(rinq ?? []).map((x) => x.updated_at), rg?.updated_at, rgrid?.updated_at].filter(Boolean).sort().at(-1)!;
   await d.meta.put({ key: `pulledAt:${user.id}`, value: newest });
   return r;
 }

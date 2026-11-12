@@ -40,7 +40,7 @@ export function AccountView() {
             <dl className="ro-list">
               <div><dt>Sync</dt><dd role="status">{s.state === "syncing" ? "Syncing…" : s.state === "offline" ? "Offline: changes wait on this device" : s.state === "error" ? `Failed: ${s.error}` : s.lastSyncedAt ? `Up to date, last synced ${new Date(s.lastSyncedAt).toLocaleTimeString()}` : "Waiting for the first sync"}</dd></div>
               <div><dt>On this device</dt><dd><span className="num">{lib.photos.length}</span> photos, <span className="num">{pending}</span> waiting to sync</dd></div>
-              <div><dt>What syncs</dt><dd>Palettes, families, grid order and small thumbnails, no camera or location data. Originals stay on their device.</dd></div>
+              <div><dt>What syncs</dt><dd>Palettes, families, Compare and Edit guide results, grid order and small thumbnails. No camera or location data. Originals stay on their device.</dd></div>
             </dl>
             <div className="actions"><button type="button" className="btn btn-primary" onClick={sync} disabled={s.state === "syncing"}>Sync now</button><button type="button" className="btn btn-secondary" onClick={signOut}>Sign out</button></div>
             <div className="wipe">

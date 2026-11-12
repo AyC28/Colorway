@@ -149,7 +149,7 @@ export function EditView() {
             <section className="ed-left" aria-label="The file">
               <figure className="cmp-photo">
                 <img src={loaded.previewUrl} alt={loaded.raw ? "Neutral render of the RAW file" : "The photo"} />
-                <figcaption>{loaded.raw ? "Neutral render: flatter than your camera’s JPEG." : "JPEG: big moves may band or clip."}</figcaption>
+                <figcaption>{row?.fromSync ? "Thumbnail from another device." : loaded.raw ? "Neutral render: flatter than your camera’s JPEG." : "JPEG: big moves may band or clip."}</figcaption>
               </figure>
               <div className="readouts">
                 <div className="ro"><h2 className="ro-h">Histogram</h2><Histogram rgb={loaded.analysis.rgbHist} height={84} /></div>

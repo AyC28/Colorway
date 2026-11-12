@@ -35,8 +35,8 @@ export function SyncProvider() {
     // local edits mark rows dirty: push a few seconds after the last one
     const dirty = liveQuery(async () => {
       const d = db();
-      const [p, t, g, grid] = await Promise.all([d.photos.filter((x) => x.dirty !== false && x.status === "done").count(), d.tombstones.count(), d.grouping.get("current"), d.grid.get("current")]);
-      return p + t + (g && g.dirty !== false ? 1 : 0) + (grid && grid.dirty !== false ? 1 : 0);
+      const [p, t, g, grid, q] = await Promise.all([d.photos.filter((x) => x.dirty !== false && x.status === "done").count(), d.tombstones.count(), d.grouping.get("current"), d.grid.get("current"), d.inquiries.filter((x) => x.dirty !== false).count()]);
+      return p + t + q + (g && g.dirty !== false ? 1 : 0) + (grid && grid.dirty !== false ? 1 : 0);
     }).subscribe((n) => { if (n > 0) soon(); });
     const every = setInterval(go, 60_000);
     const online = () => soon();

@@ -96,7 +96,7 @@ export function CompareView() {
           <div className="cmp-top">
             <figure className="cmp-photo">
               <img src={inquiryImage(current)} alt="The photo being compared" />
-              <figcaption>{current.name}</figcaption>
+              <figcaption>{current.name}{current.fromSync ? " (thumbnail from another device)" : ""}</figcaption>
               {analysis && <Strip p={analysis.photoPalette} className="strip strip-band" />}
             </figure>
             {res && fam && (

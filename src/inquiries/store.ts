@@ -6,12 +6,17 @@ import { db, type InquiryRow } from "@/db/db";
 
 export async function saveInquiry(row: Omit<InquiryRow, "id" | "createdAt" | "inGrid">): Promise<string> {
   const id = crypto.randomUUID();
-  await db().inquiries.add({ ...row, id, createdAt: Date.now(), inGrid: true });
+  await db().inquiries.add({ ...row, id, createdAt: Date.now(), inGrid: true, dirty: true });
   return id;
 }
-export const deleteInquiry = (id: string) => { forget(id); return db().inquiries.delete(id); };
-export const setInGrid = (id: string, inGrid: boolean) => db().inquiries.update(id, { inGrid });
-export const setEditTarget = (id: string, targetId: string) => db().inquiries.where("id").equals(id).modify((r) => { if (r.edit) r.edit.targetId = targetId; });
+/** Deleting also leaves a tombstone so the deletion syncs ("inq:" keeps it apart from library photos). */
+export const deleteInquiry = async (id: string) => {
+  forget(id);
+  const d = db();
+  await d.transaction("rw", d.inquiries, d.tombstones, async () => { await d.inquiries.delete(id); await d.tombstones.put({ id: `inq:${id}`, at: Date.now() }); });
+};
+export const setInGrid = (id: string, inGrid: boolean) => db().inquiries.update(id, { inGrid, dirty: true });
+export const setEditTarget = (id: string, targetId: string) => db().inquiries.where("id").equals(id).modify((r) => { if (r.edit) r.edit.targetId = targetId; r.dirty = true; });
 
 let state: { loaded: boolean; rows: InquiryRow[] } = { loaded: false, rows: [] };
 const SERVER = state;

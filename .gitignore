@@ -28,3 +28,4 @@ playwright-report/
 public/vendor/
 public/_debug/
 starter-set/
+.vercel

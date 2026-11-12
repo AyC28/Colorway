@@ -1,13 +1,13 @@
 /** PhotoAnalysis ↔ JSON for sync. Typed-array colour samples travel as base64. */
 import type { PhotoAnalysis } from "@/analysis/photo";
 
-const b64 = (a: Float32Array) => {
+export const b64 = (a: Float32Array) => {
   const bytes = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
   let s = "";
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
 };
-const f32 = (s: string) => {
+export const f32 = (s: string) => {
   const bin = atob(s), bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new Float32Array(bytes.buffer);
