@@ -59,7 +59,7 @@ export function FamilyView({ id }: { id: string }) {
                   <img className="ph-img" src={thumb(pid)} alt={p.name} />
                   {a && <><Strip p={a.photoPalette} className="strip strip-ph" /><p className="ph-hex">{a.photoPalette.slice(0, 3).map((s) => <HexButton key={s.hex} hex={s.hex} />)}</p></>}
                   {others.length > 0 && (
-                    <label className="move">Move to
+                    <label className="move-to">Move to
                       <select defaultValue="" onChange={(e) => { if (e.target.value) void movePhoto(pid, e.target.value); }}>
                         <option value="" disabled>Choose a family</option>
                         {others.map((o) => <option key={o.id} value={o.id}>{name(o.id, o.name)}</option>)}

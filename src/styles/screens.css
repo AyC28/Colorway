@@ -185,6 +185,6 @@
 .ph-card[draggable="true"] { cursor: grab; }
 .name-edit { font: 700 var(--text-3xl)/1 var(--font-display); letter-spacing: var(--tracking-display); border: 0; border-bottom: var(--rule-bar) solid var(--color-ink); background: transparent; color: var(--color-ink); padding: 0; width: 14ch; }
 .name-edit:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 4px; }
-.move { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); color: var(--color-muted); }
-.move select { min-height: 32px; border: var(--rule-hair) solid var(--color-ink); background: var(--color-plate); color: var(--color-ink); font-size: var(--text-xs); }
+.move-to { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); color: var(--color-muted); }
+.move-to select { min-height: 32px; border: var(--rule-hair) solid var(--color-ink); background: var(--color-plate); color: var(--color-ink); font-size: var(--text-xs); }
 .status-line:empty { position: absolute; }
