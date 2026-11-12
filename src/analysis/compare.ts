@@ -77,7 +77,7 @@ export function suggest(photo: PhotoAnalysis, target: Family): Suggestion[] {
 
   // Light
   push("Light", "Exposure", t.tone.p50 - p.tone.p50, BANDS.exposure, (s) => `median brightness is ${s === "+" ? "below" : "above"} the family`);
-  push("Light", "Contrast", t.tone.p95 - t.tone.p5 - (p.tone.p95 - p.tone.p5), BANDS.contrast, (s) => `tonal range (5th–95th percentile) is ${s === "+" ? "narrower" : "wider"} than the family`);
+  push("Light", "Contrast", t.tone.p95 - t.tone.p5 - (p.tone.p95 - p.tone.p5), BANDS.contrast, (s) => `tonal range (5th to 95th percentile) is ${s === "+" ? "narrower" : "wider"} than the family`);
   push("Light", "Highlights", t.tone.p90 - p.tone.p90, BANDS.tonePct, (s) => `upper tones sit ${s === "+" ? "lower" : "higher"} than the family`);
   push("Light", "Whites", t.tone.p99 - p.tone.p99, BANDS.tonePct, (s) => `brightest points are ${s === "+" ? "dimmer" : "brighter"} than the family`);
   push("Light", "Shadows", t.tone.p10 - p.tone.p10, BANDS.tonePct, (s) => `shadows are ${s === "+" ? "deeper" : "more open"} than the family`);

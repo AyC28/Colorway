@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colorway: the colour in your photos</title><meta name="description" content="Colorway reads the colour in the photos you love and helps you edit toward a look that is yours."><link rel="stylesheet" href="./screens.css"></head><body class="home">
+<header class="bar container"><a class="wordmark" href="./home.html" aria-label="Colorway home">Colorway</a>
+  <nav class="links" aria-label="Sections"><ul><li><a href="#how">How it works</a></li><li><a href="../inspiration/terrazzo/index.html">Open the studio</a></li></ul></nav>
+  <a class="btn btn-secondary" href="#">Sign in</a></header>
+<main>
+  <section class="hero container" aria-labelledby="hero-h">
+    <div class="hero-text"><h1 id="hero-h">See the colour in your photos</h1>
+      <p class="lead">Colorway reads the photos you love and shows the palette behind them.</p>
+      <div class="actions"><a class="btn btn-primary btn-lg" href="../inspiration/terrazzo/index.html">Try the starter set</a><a class="btn btn-secondary btn-lg" href="#">Upload your photos</a></div>
+      <p class="privacy">Analysed in your browser. Your originals never leave your device.</p></div>
+    <figure class="hero-cloud"><img src="./img/cloud.png" width="900" height="760" alt="Thousands of dots, each one a pixel of a sunset photo, placed by lightness and hue" fetchpriority="high">
+      <figcaption><img class="cap-img" src="./img/home-photo.jpg" width="900" height="640" alt="">Every pixel of this photo, placed by colour. Drag to turn it.</figcaption></figure>
+  </section>
+  <section id="how" class="how container" aria-labelledby="how-h">
+    <h2 id="how-h">From a cloud of pixels to a palette</h2>
+    <ol class="steps">
+      <li><img src="./img/home-photo.jpg" width="900" height="640" alt="A sunset over islands"><p><b>Your photo.</b> Shrunk to 256 pixels and read on your device.</p></li>
+      <li><img src="./img/cloud-clusters.png" width="900" height="760" alt="The pixel cloud grouped into six colour clusters"><p><b>Grouped by colour.</b> Similar pixels pull together; greys sit apart.</p></li>
+      <li><ol class="mini-pal"><li><span class="mp-sw" style="--sw:var(--data-38)"></span><button type="button" class="hex" data-copy="#f5bb87" aria-label="Copy #f5bb87">#f5bb87</button></li><li><span class="mp-sw" style="--sw:var(--data-39)"></span><button type="button" class="hex" data-copy="#d9a886" aria-label="Copy #d9a886">#d9a886</button></li><li><span class="mp-sw" style="--sw:var(--data-40)"></span><button type="button" class="hex" data-copy="#c49075" aria-label="Copy #c49075">#c49075</button></li><li><span class="mp-sw" style="--sw:var(--data-41)"></span><button type="button" class="hex" data-copy="#fed394" aria-label="Copy #fed394">#fed394</button></li><li><span class="mp-sw" style="--sw:var(--data-42)"></span><button type="button" class="hex" data-copy="#8b5342" aria-label="Copy #8b5342">#8b5342</button></li></ol><p><b>Your palette.</b> Largest first, each with a hex code to copy.</p></li>
+    </ol>
+  </section>
+</main><p id="live" class="vh" role="status" aria-live="polite"></p><script>
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); } catch {}
+  b.dataset.state = "copied"; document.getElementById("live").textContent = b.dataset.copy + " copied";
+  clearTimeout(b._t); b._t = setTimeout(() => { delete b.dataset.state; }, 1400);
+});
+</script></body></html>
