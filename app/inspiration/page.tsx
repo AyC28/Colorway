@@ -1,17 +1,8 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "@/ui/SiteHeader";
-import { EmptyState } from "@/ui/EmptyState";
+import { InspirationView } from "@/inspiration/InspirationView";
 
-export const metadata: Metadata = { title: "Inspiration" };
+export const metadata: Metadata = { title: "Inspiration", description: "Build your reference look from up to 50 photos, analysed on your device." };
 
 export default function InspirationPage() {
-  return (
-    <>
-      <SiteHeader />
-      <main className="container">
-        <div className="intro"><h1>Your reference look</h1></div>
-        <EmptyState title="No reference photos yet" body="Add up to 50 photos you love. They are analysed on this device; the originals never leave it." />
-      </main>
-    </>
-  );
+  return <InspirationView />;
 }

@@ -2,7 +2,7 @@
  * Every tunable threshold in one place. Bump ANALYSIS_VERSION whenever a value
  * changes so stored analyses get recomputed.
  */
-export const ANALYSIS_VERSION = 3;
+export const ANALYSIS_VERSION = 4;
 
 export const CONFIG = {
   /** Long edge for analysis downscale (caller does the resize). */
@@ -48,7 +48,11 @@ export const CONFIG = {
   families: {
     maxK: 8, minPerK: 5, minClusterSize: 3, restarts: 12,
     /** merge clusters that share a dominant-hue word (Gate 1/2 feedback: fewer, broader families) */
+    /** with 15+ photos, consider at least this many families (silhouette alone favours 2 on mixed sets) */
+    minFamiliesLarge: 3,
     mergeSameHue: true,
+    /** only merge when the two families' dominant hues are within this many degrees */
+    mergeMaxHueDiff: 30,
     /**
      * Feature groups (indices into FEATURE_NAMES). Each group is scaled by one
      * pooled SD, then by its weight. Hue has 3 two-d vectors (6 dims) vs 1

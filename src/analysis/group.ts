@@ -125,7 +125,8 @@ export function buildFamilies(photos: PhotoAnalysis[], seed = 1): FamilyResult {
   const silhouettes: { k: number; score: number }[] = [];
   if (maxK >= 2) {
     let bestS = -Infinity;
-    for (let kk = 2; kk <= maxK; kk++) {
+    const minK = Math.min(maxK, n >= 15 ? F.minFamiliesLarge : 2);
+    for (let kk = minK; kk <= maxK; kk++) {
       const res = kmeansBest(data, null, dim, kk, F.restarts, seed);
       const s = silhouette(data, dim, res.labels, kk);
       silhouettes.push({ k: kk, score: s });
@@ -160,15 +161,29 @@ export function buildFamilies(photos: PhotoAnalysis[], seed = 1): FamilyResult {
 
   let groups = [...new Set(labels)].map((c) => [...labels.keys()].filter((i) => labels[i] === c));
   if (F.mergeSameHue) {
-    // the hue key a family would be named by (sky/ground pair when no single hue dominates)
-    const key = (members: number[]) => {
+    // Merge families that share a dominant hue, closest pair first, but only when their
+    // hues really agree and never below a floor (so a big set keeps several families).
+    const floor = n >= 15 ? 3 : 2;
+    const hueOf = (members: number[]) => {
       const f = meanVec(members.map((i) => photos[i].features));
-      const h = hueWord(f[1], f[2]);
-      return h !== "Mixed-hue" ? h : `${hueWord(f[3], f[4])}/${hueWord(f[5], f[6])}`;
+      return { word: hueWord(f[1], f[2]), angle: hueDeg(f[1], f[2]), z: meanVec(members.map((i) => Z[i])) };
     };
-    const merged = new Map<string, number[]>();
-    for (const g of groups) { const k = key(g); merged.set(k, [...(merged.get(k) ?? []), ...g]); }
-    groups = [...merged.values()];
+    for (;;) {
+      if (groups.length <= floor) break;
+      const info = groups.map(hueOf);
+      let bi = -1, bj = -1, bd = Infinity;
+      for (let i = 0; i < groups.length; i++)
+        for (let j = i + 1; j < groups.length; j++) {
+          if (info[i].word !== info[j].word || info[i].word === "Mixed-hue") continue;
+          const dA = Math.abs(((info[i].angle - info[j].angle + 540) % 360) - 180);
+          if (dA > F.mergeMaxHueDiff) continue;
+          const d = info[i].z.reduce((s, x, k) => s + (x - info[j].z[k]) ** 2, 0);
+          if (d < bd) { bd = d; bi = i; bj = j; }
+        }
+      if (bi < 0) break;
+      groups[bi] = [...groups[bi], ...groups[bj]];
+      groups.splice(bj, 1);
+    }
   }
   groups.sort((a, b) => b.length - a.length);
   const families: Family[] = groups.map((members, fi) => {
