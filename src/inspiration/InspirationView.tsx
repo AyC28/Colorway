@@ -71,7 +71,7 @@ export function InspirationView() {
             <h2 id="empty-h" className="card-h">Start with photos you love</h2>
             <p className="note">Add up to {MAX_PHOTOS} reference photos, or drop them anywhere on this page. They are analysed on this device and the originals never leave it.</p>
             <div className="actions">{add}<button type="button" className="btn btn-secondary" onClick={starter} disabled={busy}>Try the starter set</button></div>
-            <p className="note">The starter set is 27 photos by the photographer who made Colorway.</p>
+            <p className="note">The starter set is a selection of photos by the photographer who made Colorway.</p>
           </section>
         )}
 
