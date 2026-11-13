@@ -278,3 +278,24 @@
 .sw-pair { min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .sw-pair .chip-lg { width: 100%; aspect-ratio: 1; box-sizing: border-box; }
 .sw-pair .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- tabs */
+.tablist { display: flex; gap: var(--space-lg); border-bottom: var(--rule-bar) solid var(--color-ink); margin-bottom: var(--space-lg); }
+.tab { min-height: 44px; padding: 0; border: 0; background: none; color: var(--color-muted); font: 500 var(--text-md)/1 var(--font-body); cursor: pointer; box-shadow: inset 0 -3px 0 transparent; }
+.tab:hover { color: var(--color-ink); }
+.tab[aria-selected="true"] { color: var(--color-ink); box-shadow: inset 0 -3px 0 var(--color-ink); }
+.tab:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ---------- 3D colour graph */
+.cs { display: grid; gap: var(--space-sm); }
+.cs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-lg); }
+.cs-stage { position: relative; height: min(620px, 70dvh); background: var(--color-plate); border: var(--rule-bar) solid var(--color-ink); }
+.cs-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.cs-canvas:active { cursor: grabbing; }
+.cs-canvas:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
+.cs-axes { top: 0; height: 100%; }
+.cs-msg { position: absolute; inset: 0; display: grid; place-items: center; }
+.cs-legend { display: flex; gap: var(--space-md); margin: 0; font-size: var(--text-sm); color: var(--color-muted); }
+.cs-key::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: var(--space-2xs); border-radius: 50%; vertical-align: -1px; }
+.cs-cloud::before { background: var(--color-paper-3); }
+.cs-focus::before { background: var(--color-plate); box-shadow: inset 0 0 0 3px var(--color-ink); }

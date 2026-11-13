@@ -11,7 +11,7 @@ test("home story animates the pixel cloud on scroll", async ({ page }) => {
   const story = page.locator("#story");
   const box = (await story.boundingBox())!;
   const top = await page.evaluate(() => window.scrollY);
-  for (const [i, p] of [0.05, 0.4, 0.7, 0.95].entries()) {
+  for (const [i, p] of [0.0, 0.08, 0.4, 0.7, 0.95].entries()) {
     await page.evaluate((y) => window.scrollTo(0, y), top + box.y + p * (box.height - 900));
     await page.waitForTimeout(400);
     await page.screenshot({ path: `test-results/home-${i}.png` });

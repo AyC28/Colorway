@@ -29,6 +29,12 @@ test.describe("Inspiration", () => {
     await expect(page.locator(".spec-card")).not.toHaveCount(0);
     await expect(page.locator(".ph-card")).toHaveCount(20);
     await page.screenshot({ path: "test-results/inspiration.png", fullPage: true });
+    // the 3D colour graph lives in a tab and loads on demand
+    await page.getByRole("tab", { name: "Colour space" }).click();
+    await expect(page.locator(".cs-canvas")).toBeVisible();
+    await page.waitForTimeout(800);
+    await page.locator(".cs-stage").screenshot({ path: "test-results/inspiration-space.png" });
+    await page.getByRole("tab", { name: "Palette" }).click();
 
     // hover preview + open family
     await page.locator(".fam-row").nth(1).hover();

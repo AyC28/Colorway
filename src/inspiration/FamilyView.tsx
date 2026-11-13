@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { Tabs } from "@/ui/Tabs";
+import { ColorSpace } from "@/ui/colorspace/ColorSpace";
 import { SiteHeader } from "@/ui/SiteHeader";
 import { HexButton } from "@/ui/HexButton";
 import { FullAnalysis, PaletteCards, Strip } from "@/ui/viz";
@@ -48,7 +50,13 @@ export function FamilyView({ id }: { id: string }) {
           <dl className="facts"><div><dt>Photos</dt><dd className="num">{ids.length}</dd></div><div><dt>Brightness</dt><dd className="num">{Math.round(fam.summary.tone.p50 * 100)}</dd></div><div><dt>Glow</dt><dd className="num">{fam.summary.glow.score ?? "none"}</dd></div></dl>
         </div>
 
-        <section aria-labelledby="fp-h"><div className="sec-head"><h2 id="fp-h">The palette</h2><p className="note">Colourful pixels, largest first.</p></div><PaletteCards p={fam.summary.palette} /></section>
+        <section aria-labelledby="fp-h"><div className="sec-head"><h2 id="fp-h">Family colour</h2><p className="note">Colourful pixels, largest first.</p></div>
+          <Tabs label="Family colour" tabs={[
+            { id: "palette", label: "Palette", panel: () => <PaletteCards p={fam.summary.palette} /> },
+            { id: "space", label: "Colour space", panel: () => <ColorSpace layers={[{ id: fam.id, label: title, style: "cloud", samples: ids.map((pid) => lib.analyses.get(pid)?.sample.all).filter((x): x is NonNullable<typeof x> => !!x) }]} /> },
+            { id: "analysis", label: "Full analysis", panel: () => <FullAnalysis s={fam.summary} idBase={`fam-${fam.id}`} /> },
+          ]} />
+        </section>
         <section aria-labelledby="fph-h">
           <div className="sec-head"><h2 id="fph-h">Photos in this family</h2><p className="note">Move a photo to another family; it stays put.</p></div>
           <ul className="ph-grid">
@@ -73,7 +81,6 @@ export function FamilyView({ id }: { id: string }) {
           </ul>
         </section>
 
-        <FullAnalysis s={fam.summary} idBase={`fam-${fam.id}`} />
       </main>
     </>
   );

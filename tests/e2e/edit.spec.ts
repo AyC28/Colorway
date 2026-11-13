@@ -23,8 +23,9 @@ test("edit guide decodes a CR3 in the browser and fits slider ranges", async ({ 
   await page.locator('input[type="file"]').first().setInputFiles(cr3);
   await expect(page.locator(".slider").first()).toBeVisible({ timeout: 60_000 });
   console.log(`CR3 to slider ranges in ${Date.now() - t0} ms`);
+  await expect(page.getByRole("heading", { name: /^Colour moves, toward/ })).toBeVisible();
+  await page.getByRole("tab", { name: "Readouts" }).click();
   await expect(page.getByText("Compressed C-RAW")).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Colour, toward/ })).toBeVisible();
   await page.screenshot({ path: "test-results/edit.png", fullPage: true });
   // the "another file" action sits on the title row, like Compare
   await expect(page.locator(".intro").getByRole("button", { name: "Open another file" })).toBeVisible();

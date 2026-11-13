@@ -41,6 +41,22 @@ export function linearToOklab(r: number, g: number, b: number, out: Float32Array
   out[2] = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
 }
 
+/** OKLab → gamma-encoded sRGB (0..1 each), clamped into gamut. Writes into `out`. For drawing, not analysis. */
+export function oklabToSrgb(L: number, a: number, b: number, out: Float32Array | number[]): void {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const lin = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  for (let i = 0; i < 3; i++) {
+    const v = Math.min(1, Math.max(0, lin[i]));
+    out[i] = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+  }
+}
+
 /** Per-pixel planes for one image. Pixels with alpha < 128 are dropped. */
 export interface Planes {
   width: number;

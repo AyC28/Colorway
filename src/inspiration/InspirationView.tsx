@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Tabs } from "@/ui/Tabs";
+import { ColorSpace } from "@/ui/colorspace/ColorSpace";
 import { SiteHeader } from "@/ui/SiteHeader";
 import { HexButton } from "@/ui/HexButton";
 import { FullAnalysis, Histogram, HueChart, PaletteCards, Strip, Wheel, Estimated, pct } from "@/ui/viz";
@@ -84,9 +86,12 @@ export function InspirationView() {
 
         {g && (<>
           <section className="look" aria-labelledby="pal-h">
-            <div className="sec-head"><h2 id="pal-h">The palette</h2><p className="note">Colourful pixels, largest first.</p></div>
-            <PaletteCards p={g.set.palette} />
-            <details className="more"><summary className="btn btn-secondary">Show full analysis</summary><FullAnalysis s={g.set} idBase="set" /></details>
+            <div className="sec-head"><h2 id="pal-h">Your colour</h2><p className="note">Colourful pixels, largest first.</p></div>
+            <Tabs label="Your reference look" tabs={[
+              { id: "palette", label: "Palette", panel: () => <PaletteCards p={g.set.palette} /> },
+              { id: "space", label: "Colour space", panel: () => <ColorSpace layers={[{ id: "set", label: "All photos", style: "cloud", samples: g.photoIds.map((id) => lib.analyses.get(id)?.sample.all).filter((x): x is NonNullable<typeof x> => !!x) }]} /> },
+              { id: "analysis", label: "Full analysis", panel: () => <FullAnalysis s={g.set} idBase="set" /> },
+            ]} />
           </section>
 
           <section className="fams" aria-labelledby="fam-h">

@@ -19,3 +19,15 @@ describe("color", () => {
   it("quantile interpolates", () => expect(quantile([0, 10], 0.25)).toBe(2.5));
   it("rng is deterministic", () => { const a = rng(3), b = rng(3); expect([a(), a()]).toEqual([b(), b()]); });
 });
+
+import { oklabToSrgb, linearToOklab, SRGB_TO_LINEAR } from "@/analysis/color";
+describe("oklabToSrgb", () => {
+  it("inverts the forward conversion", () => {
+    const lab = new Float32Array(3), rgb = new Float32Array(3);
+    for (const c of [[200, 120, 40], [10, 200, 90], [128, 128, 128], [30, 40, 220]]) {
+      linearToOklab(SRGB_TO_LINEAR[c[0]], SRGB_TO_LINEAR[c[1]], SRGB_TO_LINEAR[c[2]], lab);
+      oklabToSrgb(lab[0], lab[1], lab[2], rgb);
+      for (let i = 0; i < 3; i++) expect(Math.round(rgb[i] * 255)).toBe(c[i]);
+    }
+  });
+});

@@ -6,7 +6,7 @@ import type { AxisLabel, CloudView } from "./cloud3d";
 const AXIS_TEXT: Record<AxisLabel["id"], string> = { light: "Light", dark: "Dark", red: "Red", green: "Green", yellow: "Yellow", blue: "Blue" };
 
 const STEPS = [
-  { h: "One of your photos", p: "Read in your browser. Nothing is uploaded." },
+  { h: "One of your photos", p: "Scroll: it turns into pixels." },
   { h: "Every pixel, placed by colour", p: "Up: lighter. Around: hue. Outward: more colourful." },
   { h: "Grouped into a palette", p: "Similar pixels group into a palette." },
   { h: "Turn it around", p: "Drag it, or use the arrow keys." },
@@ -42,7 +42,7 @@ export function HomeView() {
       const { createCloud } = await import("./cloud3d"); // three.js loads only here
       if (disposed || !canvas.current) return;
       const dec = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-      view.current = createCloud(canvas.current, { ...d, rgb: dec(d.rgb), group: dec(d.group) }, (labels, visible) => setAxes({ labels, visible }));
+      view.current = createCloud(canvas.current, { ...d, rgb: dec(d.rgb), group: dec(d.group) }, (labels, visible) => setAxes({ labels, visible }), "/home/sample.webp");
       setMode("3d");
     }).catch(() => setMode("static"));
     return () => { disposed = true; view.current?.dispose(); view.current = null; };

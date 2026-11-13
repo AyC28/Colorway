@@ -5,6 +5,8 @@ import { makeThumb } from "@/library/thumb";
 import { saveInquiry, useInquiries, inquiryImage } from "@/inquiries/store";
 import { History } from "@/inquiries/History";
 import { MoveGlyph } from "./MoveGlyph";
+import { Tabs } from "@/ui/Tabs";
+import { ColorSpace } from "@/ui/colorspace/ColorSpace";
 import { SiteHeader } from "@/ui/SiteHeader";
 import { HexButton } from "@/ui/HexButton";
 import { Strip, hueName } from "@/ui/viz";
@@ -113,8 +115,17 @@ export function CompareView() {
         )}
 
         {res && fam && analysis && (<>
-          <section aria-labelledby="col-h">
-            <div className="sec-head"><h2 id="col-h">Colour match</h2><p className="note">Your colours vs the family’s.</p></div>
+          {/* 2nd: what to do */}
+          <section aria-labelledby="sug-h">
+            <div className="sec-head"><h2 id="sug-h">What to change</h2><p className="note">Directions, not exact values.{isJpeg ? " JPEG: big moves may band or clip." : ""}</p></div>
+            {top.length ? <SuggTable rows={top} /> : <p className="note">Already close to the family.</p>}
+            {rest.length > 0 && <details className="more"><summary className="btn btn-secondary">Show all {res.suggestions.length} suggestions</summary><SuggTable rows={rest} /></details>}
+          </section>
+          {/* 3rd: the evidence, on demand */}
+          <section aria-labelledby="ev-h" className="evidence">
+            <h2 id="ev-h" className="vh">Why</h2>
+            <Tabs label="Why" tabs={[
+              { id: "match", label: "Colour match", panel: () => (<>
             <table className="pairs">
               <thead><tr><th scope="col">This photo</th><th scope="col">{name(fam.id, fam.name)}</th><th scope="col">Difference</th></tr></thead>
               <tbody>{colourPairs(analysis.palette, fam.summary.palette).map((p, i) => (
@@ -125,11 +136,12 @@ export function CompareView() {
                 </tr>
               ))}</tbody>
             </table>
-          </section>
-          <section aria-labelledby="sug-h">
-            <div className="sec-head"><h2 id="sug-h">Suggested moves</h2><p className="note">Directions, not exact values.{isJpeg ? " JPEG: big moves may band or clip." : ""}</p></div>
-            {top.length ? <SuggTable rows={top} /> : <p className="note">Already close to the family.</p>}
-            {rest.length > 0 && <details className="more"><summary className="btn btn-secondary">Show all {res.suggestions.length} suggestions</summary><SuggTable rows={rest} /></details>}
+              </>) },
+              { id: "space", label: "Colour space", panel: () => <ColorSpace layers={[
+                { id: "family", label: name(fam.id, fam.name), style: "cloud", samples: (g!.members[fam.id] ?? []).map((id) => lib.analyses.get(id)?.sample.all).filter((x): x is NonNullable<typeof x> => !!x) },
+                { id: "photo", label: "Your photo", style: "focus", samples: [analysis.sample.all] },
+              ]} /> },
+            ]} />
           </section>
         </>)}
 

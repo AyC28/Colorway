@@ -17,7 +17,13 @@ test("compare matches a JPEG to a family with directions", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Compare a photo" })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles(join(REF, "comparison-photo.jpg"));
   await expect(page.getByRole("heading", { name: "Closest family" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "What to change" })).toBeVisible();
   await expect(page.locator(".sugg tbody tr").first()).toBeVisible();
+  await page.getByRole("tab", { name: "Colour space" }).click();
+  await expect(page.getByRole("button", { name: "Your photo" })).toBeVisible();
+  await page.waitForTimeout(800);
+  await page.locator(".cs").screenshot({ path: "test-results/compare-space.png" });
+  await page.getByRole("tab", { name: "Colour match" }).click();
   await expect(page.locator(".glyph").first()).toBeVisible();
   await expect(page.locator(".intro").getByRole("button", { name: "Compare another photo" })).toBeVisible();
   await page.screenshot({ path: "test-results/compare.png", fullPage: true });

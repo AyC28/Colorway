@@ -17,7 +17,7 @@ const AXIS_ENDS: [AxisLabel["id"], number, number, number][] = [
 
 const VERT = /* glsl */ `
   attribute vec3 aLab; attribute vec3 aColor; attribute vec3 aGroup; attribute float aDelay;
-  uniform float uMorph; uniform float uGroup; uniform float uSize; uniform float uScale;
+  uniform float uMorph; uniform float uGroup; uniform float uSize; uniform float uScale; uniform float uReveal;
   varying vec3 vColor;
   void main() {
     float t = clamp(uMorph * 1.5 - aDelay * 0.5, 0.0, 1.0);
@@ -25,7 +25,7 @@ const VERT = /* glsl */ `
     vec3 p = mix(position, aLab, t);
     vColor = mix(aColor, aGroup, uGroup);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = uSize * mix(1.9, 1.0, t) * uScale / -mv.z; // bigger while it is still a photo, so it reads as one
+    gl_PointSize = uReveal * uSize * mix(1.9, 1.0, t) * uScale / -mv.z; // grows in as the sharp photo fades; bigger while it is still a photo
     gl_Position = projectionMatrix * mv;
   }`;
 const FRAG = /* glsl */ `
@@ -39,7 +39,7 @@ const FRAG = /* glsl */ `
 const hexToRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (labels: AxisLabel[], visible: number) => void): CloudView {
+export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (labels: AxisLabel[], visible: number) => void, photoUrl?: string): CloudView {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
   const scene = new THREE.Scene();
@@ -66,7 +66,7 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (l
   geo.setAttribute("aColor", new THREE.BufferAttribute(col, 3));
   geo.setAttribute("aGroup", new THREE.BufferAttribute(grp, 3));
   geo.setAttribute("aDelay", new THREE.BufferAttribute(delay, 1));
-  const uniforms = { uMorph: { value: 0 }, uGroup: { value: 0 }, uSize: { value: 5 }, uScale: { value: 1 } };
+  const uniforms = { uMorph: { value: 0 }, uGroup: { value: 0 }, uSize: { value: 5 }, uScale: { value: 1 }, uReveal: { value: photoUrl ? 0 : 1 } };
   const mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms });
   const points = new THREE.Points(geo, mat);
   const rig = new THREE.Group();
@@ -83,6 +83,16 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (l
   rig.add(axis);
   const v = new THREE.Vector3();
   scene.add(rig);
+  // the sharp photo, exactly where its pixels sit, so the story starts from the real image
+  let photoMesh: THREE.Mesh | null = null, photoMat: THREE.MeshBasicMaterial | null = null, photoTex: THREE.Texture | null = null;
+  if (photoUrl) {
+    photoTex = new THREE.TextureLoader().load(photoUrl, () => request());
+    photoTex.colorSpace = THREE.SRGBColorSpace;
+    photoMat = new THREE.MeshBasicMaterial({ map: photoTex, transparent: true });
+    photoMesh = new THREE.Mesh(new THREE.PlaneGeometry((2.6 * aspect) / 1.5 * (1 + 1 / (d.w - 1)), (2.6 / 1.5) * (1 + 1 / (d.h - 1))), photoMat);
+    photoMesh.position.z = -0.01;
+    rig.add(photoMesh);
+  }
 
   let progress = 0, dragYaw = 0, dragPitch = 0, frame = 0;
   const draw = () => {
@@ -90,6 +100,12 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (l
     const morph = smooth(0.15, 0.6, progress);
     uniforms.uMorph.value = morph;
     uniforms.uGroup.value = smooth(0.62, 0.8, progress);
+    if (photoMat) {
+      const reveal = smooth(0.03, 0.12, progress);
+      uniforms.uReveal.value = reveal;
+      photoMat.opacity = 1 - smooth(0.06, 0.14, progress);
+      photoMesh!.visible = photoMat.opacity > 0.001;
+    }
     axisMat.opacity = morph * 0.8;
     rig.rotation.y = morph * 0.75 + dragYaw;
     rig.rotation.x = morph * 0.3 + dragPitch;
@@ -138,7 +154,7 @@ export function createCloud(canvas: HTMLCanvasElement, d: CloudData, onAxes?: (l
       canvas.removeEventListener("pointerdown", down); canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up); canvas.removeEventListener("pointercancel", up); canvas.removeEventListener("keydown", key);
       ro.disconnect();
-      geo.dispose(); mat.dispose(); axisMat.dispose(); axisGeo.dispose(); renderer.dispose();
+      geo.dispose(); mat.dispose(); axisMat.dispose(); axisGeo.dispose(); photoMesh?.geometry.dispose(); photoMat?.dispose(); photoTex?.dispose(); renderer.dispose();
     },
   };
 }

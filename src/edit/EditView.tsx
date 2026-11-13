@@ -17,6 +17,8 @@ import { makeThumb } from "@/library/thumb";
 import { saveInquiry, setEditTarget, useInquiries, inquiryImage } from "@/inquiries/store";
 import { History } from "@/inquiries/History";
 import { MoveGlyph } from "@/compare/MoveGlyph";
+import { Tabs } from "@/ui/Tabs";
+import { ColorSpace } from "@/ui/colorspace/ColorSpace";
 import type { InquiryRow } from "@/db/db";
 import { GradingGuide, HslGuide } from "./ColourGuide";
 
@@ -151,15 +153,7 @@ export function EditView() {
                 <img src={loaded.previewUrl} alt={loaded.raw ? "Neutral render of the RAW file" : "The photo"} />
                 <figcaption>{row?.fromSync ? "Thumbnail from another device." : loaded.raw ? "Neutral render: flatter than your camera’s JPEG." : "JPEG: big moves may band or clip."}</figcaption>
               </figure>
-              <div className="readouts">
-                <div className="ro"><h2 className="ro-h">Histogram</h2><Histogram rgb={loaded.analysis.rgbHist} height={84} /></div>
-                <dl className="ro-list">
-                  {loaded.clipped !== null && <div><dt>Clipped highlights</dt><dd><span className="num">{(loaded.clipped * 100).toFixed(2)}%</span> now{fitNow && <>, about <span className="num">{Math.round(fitNow.clippedAfter * 100)}%</span> after the exposure below</>}</dd></div>}
-                  {loaded.stops !== null && <div><dt>Shadow room</dt><dd>About <span className="num">{loaded.stops.toFixed(1)}</span> stops above the noise floor</dd></div>}
-                  {loaded.raw?.asShot && <div><dt>As-shot white balance</dt><dd>Red ×<span className="num">{loaded.raw.asShot.rOverG.toFixed(2)}</span>, blue ×<span className="num">{loaded.raw.asShot.bOverG.toFixed(2)}</span> (camera multipliers)</dd></div>}
-                  {loaded.raw && <div><dt>Format</dt><dd>{loaded.raw.craw ? "Compressed C-RAW" : "RAW"}, decoded on this device in <span className="num">{(loaded.raw.decodeMs / 1000).toFixed(1)}</span>&nbsp;s</dd></div>}
-                </dl>
-              </div>
+
             </section>
             <section className="card ed-card" aria-labelledby="sl-h">
               <div className="h-row"><h2 id="sl-h" className="card-h">Slider ranges</h2><Estimated /></div>
@@ -188,13 +182,36 @@ export function EditView() {
 
         {loaded && fam && (
           <section className="colour" aria-labelledby="col-h">
-            <div className="sec-head"><h2 id="col-h">Colour, toward {name(fam.id, fam.name)}</h2><p className="note">Ring: your photo. Dot: the family.</p></div>
+            <div className="sec-head"><h2 id="col-h">Colour moves, toward {name(fam.id, fam.name)}</h2><p className="note">Ring: your photo. Dot: the family.</p></div>
             <div className="colour-grid">
               <div className="card"><div className="h-row"><h3 className="card-h">HSL by colour</h3><Estimated /></div><HslGuide mine={loaded.analysis.hsl} theirs={fam.summary.hsl} famName={name(fam.id, fam.name)} /></div>
               <div className="card"><div className="h-row"><h3 className="card-h">Color grading</h3></div><GradingGuide mine={loaded.analysis.grading} theirs={fam.summary.grading} famName={name(fam.id, fam.name)} /></div>
             </div>
           </section>
         )}
+        {loaded && (
+          <section aria-labelledby="ev-h" className="evidence">
+            <h2 id="ev-h" className="vh">Details</h2>
+            <Tabs label="Details" tabs={[
+              { id: "readouts", label: "Readouts", panel: () => (<>
+              <div className="readouts">
+                <div className="ro"><h2 className="ro-h">Histogram</h2><Histogram rgb={loaded.analysis.rgbHist} height={84} /></div>
+                <dl className="ro-list">
+                  {loaded.clipped !== null && <div><dt>Clipped highlights</dt><dd><span className="num">{(loaded.clipped * 100).toFixed(2)}%</span> now{fitNow && <>, about <span className="num">{Math.round(fitNow.clippedAfter * 100)}%</span> after the exposure below</>}</dd></div>}
+                  {loaded.stops !== null && <div><dt>Shadow room</dt><dd>About <span className="num">{loaded.stops.toFixed(1)}</span> stops above the noise floor</dd></div>}
+                  {loaded.raw?.asShot && <div><dt>As-shot white balance</dt><dd>Red ×<span className="num">{loaded.raw.asShot.rOverG.toFixed(2)}</span>, blue ×<span className="num">{loaded.raw.asShot.bOverG.toFixed(2)}</span> (camera multipliers)</dd></div>}
+                  {loaded.raw && <div><dt>Format</dt><dd>{loaded.raw.craw ? "Compressed C-RAW" : "RAW"}, decoded on this device in <span className="num">{(loaded.raw.decodeMs / 1000).toFixed(1)}</span>&nbsp;s</dd></div>}
+                </dl>
+              </div>
+              </>) },
+              { id: "space", label: "Colour space", panel: () => <ColorSpace layers={[
+                ...(fam ? [{ id: "family", label: name(fam.id, fam.name), style: "cloud" as const, samples: (g!.members[fam.id] ?? []).map((id) => lib.analyses.get(id)?.sample.all).filter((x): x is NonNullable<typeof x> => !!x) }] : []),
+                { id: "photo", label: "Your photo", style: "focus" as const, samples: [loaded.analysis.sample.all] },
+              ]} /> },
+            ]} />
+          </section>
+        )}
+
         <History rows={rows} current={row?.id ?? null} onOpen={setPicked} label="Previous files" />
       </main>
     </>
