@@ -3,6 +3,8 @@
  * changes so stored analyses get recomputed.
  */
 export const ANALYSIS_VERSION = 4;
+/** Bump when how photos are GROUPED changes (no re-analysis needed). 2 = colour styles. */
+export const GROUPING_VERSION = 2;
 
 export const CONFIG = {
   /** Long edge for analysis downscale (caller does the resize). */

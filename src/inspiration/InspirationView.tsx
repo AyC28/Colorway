@@ -139,7 +139,7 @@ export function InspirationView() {
                 const a = lib.analyses.get(p.id);
                 return (
                   <li key={p.id} className="ph-card" draggable={!!a} onDragStart={(e) => e.dataTransfer.setData("text/x-colorway-photo", p.id)}>
-                    {thumb(p.id) ? <img className="ph-img" src={thumb(p.id)} alt={p.name} /> : <div className="ph-img sk-img" />}
+                    {thumb(p.id) ? (a ? <Link href={`/inspiration/photo/${p.id}`} className="ph-link" aria-label={`Open ${p.name}`}><img className="ph-img" src={thumb(p.id)} alt={p.name} /></Link> : <img className="ph-img" src={thumb(p.id)} alt={p.name} />) : <div className="ph-img sk-img" />}
                     {a ? (<>
                       <Strip p={a.photoPalette} className="strip strip-ph" />
                       <p className="ph-hex">{a.photoPalette.slice(0, 3).map((s) => <HexButton key={s.hex} hex={s.hex} />)}</p>

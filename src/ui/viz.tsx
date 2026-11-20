@@ -115,7 +115,9 @@ export function HexList({ p }: { p: Swatch[] }) {
 }
 
 /** Sky/ground, histogram, hue, grading and glow for a set or a family. */
-export function FullAnalysis({ s, idBase }: { s: GroupSummary; idBase: string }) {
+/** What FullAnalysis needs: a set/family summary or a single photo's analysis both fit. */
+type AnalysisLike = Pick<GroupSummary, "topPalette" | "bottomPalette" | "rgbHist" | "hueHist" | "grading"> & { glow: { score: number | null; label: string; hex: string | null } };
+export function FullAnalysis({ s, idBase }: { s: AnalysisLike; idBase: string }) {
   return (
     <div className="analysis">
       <section className="an an-sky">

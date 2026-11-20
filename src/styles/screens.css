@@ -299,3 +299,7 @@
 .cs-key::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: var(--space-2xs); border-radius: 50%; vertical-align: -1px; }
 .cs-cloud::before { background: var(--color-paper-3); }
 .cs-focus::before { background: var(--color-plate); box-shadow: inset 0 0 0 3px var(--color-ink); }
+.ph-link { display: block; }
+.ph-link:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ph-link img { transition: opacity var(--dur-micro) var(--ease-out); }
+.ph-link:hover img { opacity: 0.88; }

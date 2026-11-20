@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { analyzePhoto } from "@/analysis/photo";
 import { buildFamilies, summarize } from "@/analysis/group";
 import { comparePhoto } from "@/analysis/compare";
-import { CONFIG } from "@/analysis/config";
+import { STYLES } from "@/analysis/styles";
 import { noisy } from "./fixtures";
 
 const warm = Array.from({ length: 8 }, (_, i) => analyzePhoto(noisy(48, 36, [210 - i * 4, 140, 60], 20, i + 1), 48, 36, i + 1));
-const cool = Array.from({ length: 8 }, (_, i) => analyzePhoto(noisy(48, 36, [50, 90 + i * 3, 190], 20, i + 40), 48, 36, i + 40));
-const dark = Array.from({ length: 5 }, (_, i) => analyzePhoto(noisy(48, 36, [40, 30, 70 + i * 2], 10, i + 80), 48, 36, i + 80));
+const cool = Array.from({ length: 8 }, (_, i) => analyzePhoto(noisy(48, 36, [28, 46 + i * 2, 112], 14, i + 40), 48, 36, i + 40));
+const dark = Array.from({ length: 5 }, (_, i) => analyzePhoto(noisy(48, 36, [40 + i, 36, 34], 6, i + 80), 48, 36, i + 80));
 const all = [...warm, ...cool, ...dark];
 
 describe("families", () => {
@@ -18,8 +18,8 @@ describe("families", () => {
     expect(new Set(cool.map((_, i) => of(i + 8))).size).toBe(1);
     expect(of(0)).not.toBe(of(8));
   });
-  it("never leaves a family under the minimum size", () => {
-    for (const f of fam.families) expect(f.members.length).toBeGreaterThanOrEqual(CONFIG.families.minClusterSize);
+  it("uses style ids, so families stay stable", () => {
+    for (const f of fam.families) expect(STYLES.some((x) => x.id === f.id)).toBe(true);
   });
   it("names every family, uniquely", () => {
     const names = fam.families.map((f) => f.name);

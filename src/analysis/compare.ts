@@ -4,6 +4,7 @@
  */
 import { CONFIG } from "./config";
 import { paletteDistance } from "./palette";
+import { scoreStyles } from "./styles";
 import { zscore, type Family, type FamilyResult } from "./group";
 import type { PhotoAnalysis } from "./photo";
 
@@ -53,12 +54,15 @@ function band(delta: number, t: readonly number[]): Band | null {
 
 export function matchFamilies(photo: PhotoAnalysis, fam: FamilyResult): FamilyMatch[] {
   const z = zscore(photo.features, fam.standardizer);
+  // style families: the photo's fit to each style leads; features and palette break near-ties
+  const fit = new Map(scoreStyles(photo).map((x) => [x.id, x.score]));
   return fam.families
     .map((f) => {
       const featureDist = Math.sqrt(f.centroidZ.reduce((s, x, i) => s + (x - z[i]) ** 2, 0) / z.length);
       const paletteDist = paletteDistance(photo.palette, f.summary.palette);
       // palette distance is in OKLab units (~0.02–0.2); scale to be comparable with z-distance
-      const score = featureDist + CONFIG.compare.paletteWeight * (paletteDist / 0.05);
+      const styleTerm = f.style ? 2 * (1 - (fit.get(f.style) ?? 0)) : 0;
+      const score = styleTerm + (f.style ? 0.3 : 1) * (featureDist + CONFIG.compare.paletteWeight * (paletteDist / 0.05));
       return { id: f.id, name: f.name, featureDist, paletteDist, score };
     })
     .sort((a, b) => a.score - b.score);

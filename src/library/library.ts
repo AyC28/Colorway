@@ -5,7 +5,7 @@
  */
 import { liveQuery } from "dexie";
 import { db, isCurrent, type GroupingRow, type PhotoRow } from "@/db/db";
-import { ANALYSIS_VERSION } from "@/analysis/config";
+import { ANALYSIS_VERSION, GROUPING_VERSION } from "@/analysis/config";
 import { summarize, zscore, type Family } from "@/analysis/group";
 import type { PhotoAnalysis } from "@/analysis/photo";
 import { AnalysisEngine } from "@/engine/client";
@@ -74,7 +74,8 @@ async function analyseOnce(onProgress?: (done: number, total: number) => void) {
     }
     onProgress?.(++done, todo.length);
   }));
-  if (todo.length || !(await d.grouping.get("current"))) await regroup();
+  const g = await d.grouping.get("current");
+  if (todo.length || !g || g.version !== GROUPING_VERSION) await regroup();
 }
 
 /** Re-cluster the set, keep family ids and names stable, apply the user's moves. */
@@ -91,6 +92,7 @@ export async function regroup() {
   const used = new Set<string>();
   const remap = new Map<string, string>();
   for (const f of families.families) {
+    if (f.style) { used.add(f.id); remap.set(f.id, f.id); continue; } // style ids are already stable
     const ids = new Set(f.members.map((i) => ready[i].id));
     let best: string | null = null, overlap = 0;
     for (const [pid, mem] of Object.entries(prev?.members ?? {})) {
@@ -118,7 +120,7 @@ export async function regroup() {
     f.centroidZ = zs[0].map((_, j) => zs.reduce((s, z) => s + z[j], 0) / zs.length);
   }
   const names = Object.fromEntries(Object.entries(prev?.names ?? {}).filter(([k]) => members[k]));
-  const row: GroupingRow = { key: "current", version: ANALYSIS_VERSION, photoIds: ready.map((p) => p.id), set, families, members, names, updatedAt: Date.now(), dirty: true };
+  const row: GroupingRow = { key: "current", version: GROUPING_VERSION, photoIds: ready.map((p) => p.id), set, families, members, names, updatedAt: Date.now(), dirty: true };
   await d.grouping.put(row);
 }
 

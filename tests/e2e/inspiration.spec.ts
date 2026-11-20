@@ -36,6 +36,15 @@ test.describe("Inspiration", () => {
     await page.locator(".cs-stage").screenshot({ path: "test-results/inspiration-space.png" });
     await page.getByRole("tab", { name: "Palette" }).click();
 
+    // a reference photo opens on its own page with its style and its own 3D graph
+    await page.locator(".ph-link").first().click();
+    await expect(page.getByRole("heading", { name: "Style" })).toBeVisible();
+    await page.getByRole("tab", { name: "Colour space" }).click();
+    await expect(page.getByRole("button", { name: "This photo" })).toBeVisible();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: "test-results/photo.png", fullPage: true });
+    await page.goto("/inspiration");
+
     // hover preview + open family
     await page.locator(".fam-row").nth(1).hover();
     await page.locator(".fam-row").first().click();

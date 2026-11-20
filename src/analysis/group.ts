@@ -4,7 +4,7 @@
  */
 import { CONFIG, HSL_BUCKETS } from "./config";
 import { hueDeg, oklabToHex } from "./color";
-import { kmeansBest, silhouette } from "./kmeans";
+import { bestStyle, STYLES } from "./styles";
 import { paletteFromSample, poolEqual, type Swatch } from "./palette";
 import { gradingFromAB, type GradingRange, type HslStat, type PhotoAnalysis, type ToneStats } from "./photo";
 
@@ -102,6 +102,8 @@ export interface Family {
   members: number[]; // photo indices
   centroidZ: number[];
   summary: GroupSummary;
+  /** the colour style this family is (styles.ts) */
+  style?: string;
 }
 
 export interface FamilyResult {
@@ -111,87 +113,22 @@ export interface FamilyResult {
   families: Family[];
 }
 
+/**
+ * Families are colour styles (see styles.ts): each photo joins the style it fits best.
+ * Ids are the style ids, so names, moves and syncing stay stable as photos come and go.
+ * The standardiser and centroids are kept for the palette/feature side of matching.
+ */
 export function buildFamilies(photos: PhotoAnalysis[], seed = 1): FamilyResult {
-  const n = photos.length;
-  const F = CONFIG.families;
   const std = standardizer(photos.map((p) => p.features));
   const Z = photos.map((p) => zscore(p.features, std));
-  const dim = Z[0].length;
-  const data = Float64Array.from(Z.flat());
-  const maxK = Math.min(F.maxK, Math.floor(n / F.minPerK));
-
-  let labels: Int32Array = new Int32Array(n);
-  let k = 1;
-  const silhouettes: { k: number; score: number }[] = [];
-  if (maxK >= 2) {
-    let bestS = -Infinity;
-    const minK = Math.min(maxK, n >= 15 ? F.minFamiliesLarge : 2);
-    for (let kk = minK; kk <= maxK; kk++) {
-      const res = kmeansBest(data, null, dim, kk, F.restarts, seed);
-      const s = silhouette(data, dim, res.labels, kk);
-      silhouettes.push({ k: kk, score: s });
-      if (s > bestS) { bestS = s; labels = res.labels; k = kk; }
-    }
-  }
-
-  // merge clusters smaller than minClusterSize into the nearest other centroid
-  const centroid = (c: number) => {
-    const idx = [...labels.keys()].filter((i) => labels[i] === c);
-    return idx.length ? meanVec(idx.map((i) => Z[i])) : null;
-  };
-  for (;;) {
-    const sizes = new Map<number, number>();
-    labels.forEach((l) => sizes.set(l, (sizes.get(l) ?? 0) + 1));
-    if (sizes.size <= 1) break;
-    const small = [...sizes].filter(([, s]) => s < F.minClusterSize).sort((a, b) => a[1] - b[1])[0];
-    if (!small) break;
-    const [c] = small;
-    // reassign each member to its nearest remaining centroid
-    const others = [...sizes.keys()].filter((o) => o !== c).map((o) => ({ o, z: centroid(o)! }));
-    labels.forEach((l, i) => {
-      if (l !== c) return;
-      let best = others[0].o, bd = Infinity;
-      for (const { o, z } of others) {
-        const d = z.reduce((s, x, j) => s + (x - Z[i][j]) ** 2, 0);
-        if (d < bd) { bd = d; best = o; }
-      }
-      labels[i] = best;
-    });
-  }
-
-  let groups = [...new Set(labels)].map((c) => [...labels.keys()].filter((i) => labels[i] === c));
-  if (F.mergeSameHue) {
-    // Merge families that share a dominant hue, closest pair first, but only when their
-    // hues really agree and never below a floor (so a big set keeps several families).
-    const floor = n >= 15 ? 3 : 2;
-    const hueOf = (members: number[]) => {
-      const f = meanVec(members.map((i) => photos[i].features));
-      return { word: hueWord(f[1], f[2]), angle: hueDeg(f[1], f[2]), z: meanVec(members.map((i) => Z[i])) };
-    };
-    for (;;) {
-      if (groups.length <= floor) break;
-      const info = groups.map(hueOf);
-      let bi = -1, bj = -1, bd = Infinity;
-      for (let i = 0; i < groups.length; i++)
-        for (let j = i + 1; j < groups.length; j++) {
-          if (info[i].word !== info[j].word || info[i].word === "Mixed-hue") continue;
-          const dA = Math.abs(((info[i].angle - info[j].angle + 540) % 360) - 180);
-          if (dA > F.mergeMaxHueDiff) continue;
-          const d = info[i].z.reduce((s, x, k) => s + (x - info[j].z[k]) ** 2, 0);
-          if (d < bd) { bd = d; bi = i; bj = j; }
-        }
-      if (bi < 0) break;
-      groups[bi] = [...groups[bi], ...groups[bj]];
-      groups.splice(bj, 1);
-    }
-  }
-  groups.sort((a, b) => b.length - a.length);
-  const families: Family[] = groups.map((members, fi) => {
-    const summary = summarize(members.map((i) => photos[i]), seed);
-    return { id: `f${fi + 1}`, name: "", members, centroidZ: meanVec(members.map((i) => Z[i])), summary };
+  const buckets = new Map<string, number[]>();
+  photos.forEach((p, i) => { const id = bestStyle(p).id; buckets.set(id, [...(buckets.get(id) ?? []), i]); });
+  const families: Family[] = STYLES.filter((d) => buckets.has(d.id)).map((d) => {
+    const members = buckets.get(d.id)!;
+    return { id: d.id, name: d.name, style: d.id, members, centroidZ: meanVec(members.map((i) => Z[i])), summary: summarize(members.map((i) => photos[i]), seed) };
   });
-  nameFamilies(families, photos.map((p) => p.features));
-  return { k: families.length, silhouettes, standardizer: std, families };
+  families.sort((x, y) => y.members.length - x.members.length);
+  return { k: families.length, silhouettes: [], standardizer: std, families };
 }
 
 /** Photographer-friendly hue words over OKLCH hue (degrees). */
@@ -204,35 +141,3 @@ export function hueWord(x: number, y: number): string {
   return HUE_WORDS.find(([lim]) => hueDeg(x, y) < lim)![1];
 }
 
-/**
- * Names from hue + brightness only: "<hue> & <bright|dark>", the brightness
- * word only when the family stands out from the set (|z| ≥ 0.5). Duplicates
- * get their sky/ground hues, e.g. "Green, blue sky".
- */
-function nameFamilies(families: Family[], all: number[][]) {
-  const Ls = all.map((v) => v[0]);
-  const mu = mean(Ls), sd = Math.sqrt(mean(Ls.map((x) => (x - mu) ** 2))) || 1;
-  const base = families.map((fam) => {
-    const f = fam.summary.features;
-    const z = (f[0] - mu) / sd;
-    const light = z >= 0.5 ? "bright" : z <= -0.5 ? "dark" : "";
-    let hue = hueWord(f[1], f[2]);
-    // no single dominant hue but sky and ground each have one (e.g. sunset over water)
-    const sky = hueWord(f[3], f[4]), ground = hueWord(f[5], f[6]);
-    if (hue === "Mixed-hue" && sky !== "Mixed-hue" && ground !== "Mixed-hue" && sky !== ground)
-      hue = `${sky} sky / ${ground.toLowerCase()} ground`;
-    return [hue, light].filter(Boolean).join(" & ");
-  });
-  const used = new Map<string, number>();
-  families.forEach((fam, i) => {
-    let name = base[i];
-    if (base.filter((b) => b === name).length > 1) {
-      const f = fam.summary.features;
-      const sky = hueWord(f[3], f[4]).toLowerCase(), ground = hueWord(f[5], f[6]).toLowerCase();
-      name += sky !== ground ? `, ${sky} sky / ${ground} ground` : "";
-    }
-    const c = (used.get(name) ?? 0) + 1;
-    used.set(name, c);
-    fam.name = c > 1 ? `${name} ${c}` : name;
-  });
-}

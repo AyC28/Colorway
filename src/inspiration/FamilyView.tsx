@@ -65,7 +65,7 @@ export function FamilyView({ id }: { id: string }) {
               if (!p) return null;
               return (
                 <li key={pid} className="ph-card">
-                  <img className="ph-img" src={thumb(pid)} alt={p.name} />
+                  <Link href={`/inspiration/photo/${pid}`} className="ph-link" aria-label={`Open ${p.name}`}><img className="ph-img" src={thumb(pid)} alt={p.name} /></Link>
                   {a && <><Strip p={a.photoPalette} className="strip strip-ph" /><p className="ph-hex">{a.photoPalette.slice(0, 3).map((s) => <HexButton key={s.hex} hex={s.hex} />)}</p></>}
                   {others.length > 0 && (
                     <label className="move-to">Move to
